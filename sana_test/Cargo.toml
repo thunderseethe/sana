@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 sana_core = { path = "../sana_core" }
+sana_derive = { path = "../sana_derive" }
 regex-syntax = "0.6"
 dot = "0.1"

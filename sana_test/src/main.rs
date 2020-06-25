@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 use sana_core::{regex::{Derivative, Regex}, regex::pprint_regex, Rule, automata::{State, Automata}, RuleSet, ir::{pprint_ir, Ir}};
+use sana_derive::Sana;
 use regex_syntax;
 
 use std::convert::TryFrom;
@@ -8,6 +9,14 @@ use std::convert::TryFrom;
 mod basic;
 mod logos_basic;
 mod sql;
+
+#[derive(Sana)]
+enum Token {
+    #[regex(r"[~!@#\^\&|`?+\-*/%<>=]+" & !".*--.*" & !".*/\\*.*", priority = 1)]
+    Op,
+    #[error]
+    Error,
+}
 
 fn regex_match(regex: &Regex, input: &str) -> bool {
     let mut regex = regex.clone();

@@ -197,19 +197,11 @@ fn flatten_and(list: &mut Vec<Regex>) {
 }
 
 impl Regex {
-    // pub fn ordering(&self) -> usize {
-    //     match self {
-    //         Mir::Empty | Mir::Loop(_) | Mir::Maybe(_) => 0,
-    //         Mir::Concat(concat) => {
-    //             concat.iter().map(Mir::ordering).sum()
-    //         },
-    //         Mir::Or(alt) => {
-    //             alt.iter().map(Mir::ordering).min().unwrap_or(0)
-    //         },
-    //         Mir::Class(_) => 1,
-    //         Mir::Literal(_) => 2,
-    //     }
-    // }
+    pub fn literal_str(string: &str) -> Regex {
+        if string.is_empty() { return Regex::Empty }
+
+        Regex::Concat(string.chars().map(|ch| Regex::Literal(ch)).collect())
+    }
 
     pub fn normalize(&mut self) {
         match self {
