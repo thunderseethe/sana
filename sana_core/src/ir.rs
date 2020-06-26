@@ -272,24 +272,36 @@ impl<T: Clone> Vm<T> {
         }
     }
 
-    pub fn run<I>(&mut self, input: &mut I) -> (usize, Option<T>)
-    where I: Iterator<Item=char>{
+    pub fn run(&mut self, input: &str) -> (usize, Option<T>) {
+        let mut input = input.chars();
+
         self.inst_ptr = 0;
         self.jump_ptr = 0;
 
-        let mut consumed = 0;
         let mut action = None;
-        loop {
-            match &self.code[self.jump_ptr] {
-                Op::JumpMatches { from, to, on_success } => {
-                    let ch =
-                        if let Some(ch) = input.next() {
-                            consumed += 1;
-                            ch
-                        }
-                        else { break };
+        let mut span = 0;
 
-                    if (*from..*to).contains(&ch) {
+        let mut cursor_pos = 0;
+        let mut cursor =
+            if let Some(ch) = input.next() {
+                cursor_pos += 1;
+                ch
+            }
+            else { return (0, None) };
+        let mut eof = false;
+
+        loop {
+            match &self.code[self.inst_ptr] {
+                Op::JumpMatches { from, to, on_success } => {
+                    if eof { break }
+
+                    if (*from..=*to).contains(&cursor) {
+                        cursor_pos += 1;
+                        if let Some(ch) = input.next() {
+                            cursor = ch
+                        }
+                        else { eof = true };
+
                         self.inst_ptr = *on_success;
                         self.jump_ptr = *on_success;
                     }
@@ -298,31 +310,33 @@ impl<T: Clone> Vm<T> {
                     }
                 },
                 Op::JumpNotMatches { from, to, on_failure } => {
-                    let ch =
-                        if let Some(ch) = input.next() {
-                            consumed += 1;
-                            ch
-                        }
-                        else { break };
+                    if eof { break }
 
-                    if (*from..*to).contains(&ch) {
+                    if (*from..=*to).contains(&cursor) {
                         self.inst_ptr += 1;
                     }
                     else {
+                        cursor_pos += 1;
+                        if let Some(ch) = input.next() {
+                            cursor = ch
+                        }
+                        else { eof = true };
+
                         self.inst_ptr = *on_failure;
                         self.jump_ptr = *on_failure;
                     }
                 },
                 Op::LoopMatches { from, to} => {
-                    let ch =
-                        if let Some(ch) = input.next() {
-                            consumed += 1;
-                            ch
-                        }
-                        else { break };
+                    if eof { break }
 
-                    if (*from..*to).contains(&ch) {
-                        self.inst_ptr += self.jump_ptr;
+                    if (*from..=*to).contains(&cursor) {
+                        cursor_pos += 1;
+                        if let Some(ch) = input.next() {
+                            cursor = ch
+                        }
+                        else { eof = true };
+
+                        self.inst_ptr = self.jump_ptr;
                     }
                     else {
                         self.inst_ptr += 1;
@@ -332,12 +346,16 @@ impl<T: Clone> Vm<T> {
                     self.inst_ptr = *loc;
                     self.jump_ptr = *loc;
                 },
-                Op::Set(act) =>
-                    action = Some(act.clone()),
+                Op::Set(act) => {
+                    action = Some(act.clone());
+                    span = cursor_pos - 1;
+
+                    self.inst_ptr += 1;
+                },
                 Op::Halt => break,
             }
         }
 
-        (consumed, action)
+        (span, action)
     }
 }

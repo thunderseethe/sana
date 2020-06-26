@@ -93,6 +93,7 @@ impl<T: Clone> RuleSet<T> {
         let state =
             match self.top_rule(vector.nullables()) {
                 Ok(Some(rule)) => State::Action(rule.action.clone()),
+                Err(_) => panic!("State ambiguity"),
                 _ => State::Normal,
             };
 

@@ -1,19 +1,19 @@
 use sana_core::{Rule, RuleSet};
 use sana_core::regex::Regex;
-use sana_core::ir::{Ir, Vm};
+use sana_core::ir::{Ir, Vm, pprint_ir};
 
 use std::convert::TryFrom;
 
-fn compile(rules: &[(&str, &'static str)]) -> Ir<&'static str> {
+fn compile(rules: &[(&str, &'static str, usize)]) -> Ir<&'static str> {
     let rules: Vec<_> = rules.iter()
-        .map(|(regex, act)|  {
+        .map(|(regex, act, prio)|  {
             let hir = regex_syntax::Parser::new()
                 .parse(regex).unwrap();
             let regex = Regex::try_from(hir).unwrap();
 
             Rule {
                 regex,
-                priority: 0,
+                priority: *prio,
                 action: *act
             }
         })
@@ -32,28 +32,62 @@ fn load() {
     vm.load(&ir);
 }
 
-pub fn basic_tokens() -> &'static [(&'static str, &'static str)] {
+#[test]
+fn basic_lexer() {
+    let ir = compile(basic_tokens());
+    // pprint_ir(&ir);
+    // panic!();
+
+    let mut vm = Vm::new();
+    vm.load(&ir);
+
+    let mut input = "private equal = x == y";
+
+    let gold = &[
+        (7, Some("Private")),
+        (1, Some("Whitespace")),
+        (5, Some("Identifier")),
+        (1, Some("Whitespace")),
+        (1, Some("OpAssign")),
+        (1, Some("Whitespace")),
+        (1, Some("Identifier")),
+        (1, Some("Whitespace")),
+        (2, Some("OpEquality")),
+        (1, Some("Whitespace")),
+        (1, Some("Identifier")),
+        (0, None),
+    ];
+
+    for &g in gold {
+        let (len, action) = vm.run(input);
+        assert_eq!(g, (len, action));
+
+        input = &input[len..];
+    }
+}
+
+pub fn basic_tokens() -> &'static [(&'static str, &'static str, usize)] {
     &[
-        ( r"[ \n\t\f]", "Whitespace" ),
-        ( "[a-zA-Z_$][a-zA-Z0-9_$]*", "Identifier" ),
-        ( r#""([^"\\]|\\t|\\u|\\n|\\")*""#, "String" ),
-        ( "private", "Private" ),
-        ( "primitive", "Primitive" ),
-        ( "protected", "Protected" ),
-        ( "in", "In" ),
-        ( "instanceof", "Instanceof" ),
-        ( r"\.", "Accessor" ),
-        ( r"\.\.\.", "Ellipsis" ),
-        ( r"\(", "ParenOpen" ),
-        ( r"\)", "ParenClose" ),
-        ( r"\{", "BraceOpen" ),
-        ( r"\}", "BraceClose" ),
-        ( r"\+", "OpAddition" ),
-        ( r"\+\+", "OpIncrement" ),
-        ( "=", "OpAssign" ),
-        ( "==", "OpEquality" ),
-        ( "===", "OpStrictEquality" ),
-        ( "=>", "FatArrow" ),
+        ( r"[ \n\t\f]", "Whitespace", 0 ),
+        ( "[a-zA-Z_$][a-zA-Z0-9_$]*", "Identifier", 0 ),
+        ( r#""([^"\\]|\\t|\\u|\\n|\\")*""#, "String", 0 ),
+        ( "private", "Private", 1 ),
+        ( "primitive", "Primitive", 1 ),
+        ( "protected", "Protected", 1 ),
+        ( "in", "In", 1 ),
+        ( "instanceof", "Instanceof", 1 ),
+        ( r"\.", "Accessor", 0 ),
+        ( r"\.\.\.", "Ellipsis", 0 ),
+        ( r"\(", "ParenOpen", 0 ),
+        ( r"\)", "ParenClose", 0 ),
+        ( r"\{", "BraceOpen", 0 ),
+        ( r"\}", "BraceClose", 0 ),
+        ( r"\+", "OpAddition", 0 ),
+        ( r"\+\+", "OpIncrement", 0 ),
+        ( "=", "OpAssign", 0 ),
+        ( "==", "OpEquality", 0 ),
+        ( "===", "OpStrictEquality", 0 ),
+        ( "=>", "FatArrow", 0 ),
     ]
 }
 
