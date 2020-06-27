@@ -95,10 +95,10 @@ impl<T: Clone> RuleSet<T> {
         let vector = RegexVector {
             exprs: self.rules.iter().map(|r| r.regex.clone()).collect()
         };
+        let rule = self.top_rule(vector.nullables())?;
         let state =
-            match self.top_rule(vector.nullables()) {
-                Ok(Some(rule)) => State::Action(rule.action.clone()),
-                Err(_) => panic!("State ambiguity"),
+            match rule {
+                Some(rule) => State::Action(rule.action.clone()),
                 _ => State::Normal,
             };
 
