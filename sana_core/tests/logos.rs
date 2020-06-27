@@ -1,6 +1,6 @@
 use sana_core::{Rule, RuleSet};
 use sana_core::regex::Regex;
-use sana_core::ir::{Ir, Vm, pprint_ir};
+use sana_core::ir::{Ir, Vm};
 
 use std::convert::TryFrom;
 

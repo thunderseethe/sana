@@ -284,7 +284,6 @@ impl<T: Clone> Vm<T> {
         let mut cursor_pos = 0;
         let mut cursor =
             if let Some(ch) = input.next() {
-                cursor_pos += 1;
                 ch
             }
             else { return (0, None) };
@@ -296,7 +295,7 @@ impl<T: Clone> Vm<T> {
                     if eof { break }
 
                     if (*from..=*to).contains(&cursor) {
-                        cursor_pos += 1;
+                        cursor_pos += cursor.len_utf8();
                         if let Some(ch) = input.next() {
                             cursor = ch
                         }
@@ -316,7 +315,7 @@ impl<T: Clone> Vm<T> {
                         self.inst_ptr += 1;
                     }
                     else {
-                        cursor_pos += 1;
+                        cursor_pos += cursor.len_utf8();
                         if let Some(ch) = input.next() {
                             cursor = ch
                         }
@@ -330,7 +329,7 @@ impl<T: Clone> Vm<T> {
                     if eof { break }
 
                     if (*from..=*to).contains(&cursor) {
-                        cursor_pos += 1;
+                        cursor_pos += cursor.len_utf8();
                         if let Some(ch) = input.next() {
                             cursor = ch
                         }
@@ -348,7 +347,7 @@ impl<T: Clone> Vm<T> {
                 },
                 Op::Set(act) => {
                     action = Some(act.clone());
-                    span = cursor_pos - 1;
+                    span = cursor_pos;
 
                     self.inst_ptr += 1;
                 },
