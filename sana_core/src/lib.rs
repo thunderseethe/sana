@@ -7,6 +7,11 @@ pub mod automata;
 pub mod ir;
 pub mod dot;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Error {
+    AmbiguityError(usize, usize)
+}
+
 pub struct Rule<T> {
     pub regex: Regex,
     pub priority: usize,
@@ -63,7 +68,7 @@ pub struct RuleSet<T> {
 }
 
 impl<T: Clone> RuleSet<T> {
-    fn top_rule<I>(&self, mut rule_indices: I) -> Result<Option<&Rule<T>>, ()>
+    fn top_rule<I>(&self, mut rule_indices: I) -> Result<Option<&Rule<T>>, Error>
     where I: Iterator<Item=usize> {
         let ix =
             if let Some(ix) = rule_indices.next() { ix }
@@ -78,7 +83,7 @@ impl<T: Clone> RuleSet<T> {
             let prio = self.rules[i].priority;
             match prio.cmp(&top_prio) {
                 Less => (),
-                Equal => return Err(()),
+                Equal => return Err(Error::AmbiguityError(top_ix, i)),
                 Greater => { top_ix = i; top_prio = prio }
             }
         }
@@ -86,7 +91,7 @@ impl<T: Clone> RuleSet<T> {
         Ok(Some(&self.rules[top_ix]))
     }
 
-    pub fn construct_dfa(&self) -> Automata<T> {
+    pub fn construct_dfa(&self) -> Result<Automata<T>, Error> {
         let vector = RegexVector {
             exprs: self.rules.iter().map(|r| r.regex.clone()).collect()
         };
@@ -135,6 +140,6 @@ impl<T: Clone> RuleSet<T> {
 
         }
 
-        automata
+        Ok(automata)
     }
 }

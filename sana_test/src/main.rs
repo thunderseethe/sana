@@ -102,7 +102,7 @@ fn test_logos_basic() {
         .collect();
     let ruleset = RuleSet { rules };
 
-    let dfa = ruleset.construct_dfa();
+    let dfa = ruleset.construct_dfa().unwrap();
     let mut file =
         std::fs::File::create(format!("tmp/logos_basic.dot"))
         .unwrap();
@@ -131,7 +131,7 @@ fn test_sql() {
         .collect();
     let ruleset = RuleSet { rules };
 
-    let dfa = ruleset.construct_dfa();
+    let dfa = ruleset.construct_dfa().unwrap();
     let mut file =
         std::fs::File::create(format!("tmp/sql_keywords.dot"))
         .unwrap();

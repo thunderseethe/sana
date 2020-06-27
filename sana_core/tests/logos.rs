@@ -20,7 +20,7 @@ fn compile(rules: &[(&str, &'static str, usize)]) -> Ir<&'static str> {
         .collect();
 
     let ruleset = RuleSet { rules };
-    let dfa = ruleset.construct_dfa();
+    let dfa = ruleset.construct_dfa().unwrap();
 
     Ir::from_automata(dfa)
 }
