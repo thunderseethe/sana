@@ -13,9 +13,8 @@ cargo-fuzz = true
 libfuzzer-sys = "0.3"
 arbitrary = { version = "0.4.5", features = ["derive"] }
 regex-syntax = "0.6"
-
-[dependencies.sana_core]
-path = "../sana_core"
+sana_core = { path = "../sana_core" }
+sana = { path = "../sana" }
 
 # Prevent this from interfering with workspaces
 [workspace]
@@ -24,5 +23,11 @@ members = ["."]
 [[bin]]
 name = "ir"
 path = "fuzz_targets/ir.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "sql"
+path = "fuzz_targets/sql.rs"
 test = false
 doc = false
