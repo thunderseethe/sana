@@ -26,22 +26,11 @@ fn compile(rules: &[(&str, &'static str, usize)]) -> Ir<&'static str> {
 }
 
 #[test]
-fn load() {
-    let ir = compile(basic_tokens());
-    let mut vm = Vm::new();
-    vm.load(&ir);
-}
-
-#[test]
 fn basic_lexer() {
-    let ir = compile(basic_tokens());
-    // pprint_ir(&ir);
-    // panic!();
+    let ir = compile(basic_tokens()).flatten();
 
-    let mut vm = Vm::new();
-    vm.load(&ir);
-
-    let mut input = "private equal = x == y";
+    let input = "private equal = x == y";
+    let mut vm = Vm::new(&ir, input);
 
     let gold = &[
         (7, Some("Private")),
@@ -58,11 +47,13 @@ fn basic_lexer() {
         (0, None),
     ];
 
+    let mut pos = 0;
     for &g in gold {
-        let (len, action) = vm.run(input);
-        assert_eq!(g, (len, action));
+        let res = vm.run();
 
-        input = &input[len..];
+        assert_eq!((pos, pos + g.0, g.1), res);
+
+        pos = res.1
     }
 }
 

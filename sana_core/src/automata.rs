@@ -45,6 +45,7 @@ fn state_range(state: usize) -> RangeInclusive<(usize, CharRange)> {
     (state, min)..=(state, max)
 }
 
+#[derive(Debug, Clone)]
 pub struct Automata<T> {
     pub states: Vec<State<T>>,
     pub edges: BTreeMap<(usize, CharRange), usize>,
@@ -111,7 +112,7 @@ impl<T> Automata<T> {
             }
 
             let far_edges = self.transitions_from(i)
-                .filter(|&(_, end)| end != i && end != terminal);
+                .filter(|&(_, end)| end != terminal);
             let far_coedges = coedges.range(state_range(i))
                 .filter(|(&(end, _), &start)| start != i && end != terminal);
 

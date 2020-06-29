@@ -1,0 +1,25 @@
+---
+kind: pipeline
+type: docker
+name: default
+
+platform:
+  os: linux
+  arch: amd64
+
+trigger:
+  event:
+    - push
+
+clone:
+  skip_verify: true
+
+steps:
+- name: Build
+  image: rust
+  commands:
+    - cargo build --verbose
+- name: Test
+  image: rust
+  commands:
+    - cargo test --verbose

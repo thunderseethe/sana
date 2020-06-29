@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{ops::Not, collections::VecDeque};
 
 use crate::automata::{Automata, NodeKind, State};
 
@@ -31,6 +31,7 @@ impl<T> Block<T> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Op<T> {
+    Shift,
     /// Jump if matches
     JumpMatches {
         from: char,
@@ -76,6 +77,8 @@ fn pprint_op<T: std::fmt::Debug>(op: &Op<T>) {
 
     print!("    ");
     match op {
+        Shift =>
+            println!("shift"),
         JumpMatches { from, to, on_success } =>
             println!("jm {:?} {:?} l{}", from, to, on_success),
         JumpNotMatches { from, to, on_failure } =>
@@ -141,6 +144,11 @@ impl<T: Clone> Ir<T> {
 
         while let Some(st) = queue.pop_front() {
             let block_ix = state_blocks[st].unwrap();
+
+            // Inital and terminal do not shift
+            if st != 0 && st != terminal {
+                blocks[block_ix].push(Op::Shift)
+            }
 
             if let Some(State::Action(act)) = automata.get(st) {
                 blocks[block_ix].push(Op::Set(act.clone()))
@@ -229,132 +237,131 @@ impl<T: Clone> Ir<T> {
 
         Ir { blocks }
     }
-}
 
-pub struct Vm<T> {
-    inst_ptr: usize,
-    jump_ptr: usize,
-    code: Vec<Op<T>>,
-    symbol_map: Vec<usize>,
-}
-
-impl<T: Clone> Vm<T> {
-    pub fn new() -> Self {
-        Vm {
-            inst_ptr: 0,
-            jump_ptr: 0,
-            code: vec![],
-            symbol_map: vec![]
-        }
-    }
-
-    pub fn load(&mut self, ir: &Ir<T>) {
-        self.code.clear();
-        self.symbol_map.clear();
-
-        self.symbol_map.reserve(ir.blocks.len());
+    pub fn flatten(&self) -> Vec<Op<T>> {
+        let mut code = vec![];
+        let mut symbol_map = Vec::with_capacity(self.blocks.len());
 
         let mut code_len = 0;
-        for block in &ir.blocks {
-            self.code.extend(block.ops().iter().cloned());
-            self.symbol_map.push(code_len);
+        for block in &self.blocks {
+            code.extend(block.ops().iter().cloned());
+            symbol_map.push(code_len);
             code_len += block.ops().len();
         }
 
-        for op in &mut self.code {
+        for op in &mut code {
             match op {
                 Op::JumpMatches { on_success: loc, .. }
                 | Op::JumpNotMatches { on_failure: loc, ..}
                 | Op::Jump(loc) =>
-                    *loc = self.symbol_map[*loc],
+                    *loc = symbol_map[*loc],
                 _ => (),
             }
         }
+
+        code
+    }
+}
+
+pub struct Vm<'code, 'input, T> {
+    code: &'code [Op<T>],
+    input: &'input str,
+    iter: std::str::Chars<'input>,
+    cursor: Option<char>,
+    pos: usize,
+}
+
+impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
+    pub fn new(code: &'code [Op<T>], input: &'input str) -> Self {
+        let mut iter = input.chars();
+        let cursor = iter.next();
+        let pos = 0;
+
+        Vm { code, input, iter, cursor, pos }
     }
 
-    pub fn run(&mut self, input: &str) -> (usize, Option<T>) {
-        let mut input = input.chars();
+    fn shift(&mut self) {
+        self.cursor = self.iter.next();
+        self.pos += self.cursor
+            .map(char::len_utf8)
+            .unwrap_or(1);
+    }
 
-        self.inst_ptr = 0;
-        self.jump_ptr = 0;
+    pub fn run(&mut self) -> (usize, usize, Option<T>) {
+        let mut inst_ptr = 0;
+        let mut jump_ptr = 0;
 
         let mut action = None;
-        let mut span = 0;
+        let start = self.pos;
+        let mut end = start;
 
-        let mut cursor_pos = 0;
-        let mut cursor =
-            if let Some(ch) = input.next() {
-                ch
-            }
-            else { return (0, None) };
-        let mut eof = false;
+        if self.cursor.is_none() {
+            return (start, end, None)
+        }
 
         loop {
-            match &self.code[self.inst_ptr] {
+            match &self.code[inst_ptr] {
+                Op::Shift => {
+                    self.shift();
+                },
                 Op::JumpMatches { from, to, on_success } => {
-                    if eof { break }
+                    let cursor =
+                        if let Some(ch) = self.cursor { ch }
+                        else { break };
 
                     if (*from..=*to).contains(&cursor) {
-                        cursor_pos += cursor.len_utf8();
-                        if let Some(ch) = input.next() {
-                            cursor = ch
-                        }
-                        else { eof = true };
+                        inst_ptr = *on_success;
+                        jump_ptr = *on_success;
 
-                        self.inst_ptr = *on_success;
-                        self.jump_ptr = *on_success;
+                        continue;
                     }
-                    else {
-                        self.inst_ptr += 1;
-                    }
+
                 },
                 Op::JumpNotMatches { from, to, on_failure } => {
-                    if eof { break }
+                    let cursor =
+                        if let Some(ch) = self.cursor { ch }
+                        else { break };
 
-                    if (*from..=*to).contains(&cursor) {
-                        self.inst_ptr += 1;
-                    }
-                    else {
-                        cursor_pos += cursor.len_utf8();
-                        if let Some(ch) = input.next() {
-                            cursor = ch
-                        }
-                        else { eof = true };
+                    if (*from..=*to).contains(&cursor).not() {
+                        inst_ptr = *on_failure;
+                        jump_ptr = *on_failure;
 
-                        self.inst_ptr = *on_failure;
-                        self.jump_ptr = *on_failure;
+                        continue;
                     }
                 },
                 Op::LoopMatches { from, to} => {
-                    if eof { break }
+                    let cursor =
+                        if let Some(ch) = self.cursor { ch }
+                        else { break };
 
                     if (*from..=*to).contains(&cursor) {
-                        cursor_pos += cursor.len_utf8();
-                        if let Some(ch) = input.next() {
-                            cursor = ch
-                        }
-                        else { eof = true };
+                        inst_ptr = jump_ptr;
 
-                        self.inst_ptr = self.jump_ptr;
-                    }
-                    else {
-                        self.inst_ptr += 1;
+                        continue
                     }
                 },
                 Op::Jump(loc) => {
-                    self.inst_ptr = *loc;
-                    self.jump_ptr = *loc;
+                    inst_ptr = *loc;
+                    jump_ptr = *loc;
+
+                    continue
                 },
                 Op::Set(act) => {
                     action = Some(act.clone());
-                    span = cursor_pos;
-
-                    self.inst_ptr += 1;
+                    end = self.pos;
                 },
                 Op::Halt => break,
-            }
+            };
+
+            inst_ptr += 1;
         }
 
-        (span, action)
+        if end != self.pos {
+            self.iter = self.input[end..].chars();
+            self.cursor = self.iter.next();
+            self.pos = end;
+        }
+
+        (start, end, action)
     }
 }
