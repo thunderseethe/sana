@@ -6,7 +6,6 @@ use proc_macro::TokenStream;
 use proc_macro_error::*;
 use proc_macro2::Span;
 use syn::{Ident, ItemEnum};
-use quote::quote;
 
 use sana_core::RuleSet;
 use sana_core::{Rule, regex::Regex};
@@ -137,10 +136,9 @@ pub fn sana(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input)
         .expect("Sana can be only be derived for enums");
 
-    let _spec = build_spec(item);
+    let spec = build_spec(item);
 
     abort_if_dirty();
 
-    let output = quote! { };
-    proc_macro::TokenStream::from(output)
+    generator::generate(spec).into()
 }

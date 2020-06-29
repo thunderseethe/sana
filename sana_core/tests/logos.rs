@@ -1,6 +1,6 @@
 use sana_core::{Rule, RuleSet};
 use sana_core::regex::Regex;
-use sana_core::ir::{Ir, Vm};
+use sana_core::ir::{Ir, Vm, VmResult};
 
 use std::convert::TryFrom;
 
@@ -50,10 +50,22 @@ fn basic_lexer() {
     let mut pos = 0;
     for &g in gold {
         let res = vm.run();
+        let gold =
+            if let Some(act) = g.1 {
+                let start = pos;
+                pos = start + g.0;
 
-        assert_eq!((pos, pos + g.0, g.1), res);
+                VmResult::Action {
+                    start,
+                    end: pos,
+                    action: act
+                }
+            }
+            else {
+                VmResult::Eof
+            };
 
-        pos = res.1
+        assert_eq!(gold, res);
     }
 }
 

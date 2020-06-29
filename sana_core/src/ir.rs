@@ -3,7 +3,7 @@ use std::{ops::Not, collections::VecDeque};
 use crate::automata::{Automata, NodeKind, State};
 
 pub struct Ir<T> {
-    blocks: Vec<Block<T>>
+    pub blocks: Vec<Block<T>>
 }
 
 pub enum Block<T> {
@@ -263,6 +263,21 @@ impl<T: Clone> Ir<T> {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum VmResult<T> {
+    Action {
+        start: usize,
+        end: usize,
+        action: T
+    },
+    Error {
+        start: usize,
+        end: usize,
+    },
+    Eof,
+}
+
+#[derive(Debug, Clone)]
 pub struct Vm<'code, 'input, T> {
     code: &'code [Op<T>],
     input: &'input str,
@@ -287,7 +302,13 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
             .unwrap_or(1);
     }
 
-    pub fn run(&mut self) -> (usize, usize, Option<T>) {
+    pub fn rewind(&mut self, pos: usize) {
+        self.iter = self.input[pos..].chars();
+        self.cursor = self.iter.next();
+        self.pos = pos;
+    }
+
+    pub fn run(&mut self) -> VmResult<T> {
         let mut inst_ptr = 0;
         let mut jump_ptr = 0;
 
@@ -296,7 +317,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
         let mut end = start;
 
         if self.cursor.is_none() {
-            return (start, end, None)
+            return VmResult::Eof
         }
 
         loop {
@@ -356,12 +377,20 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
             inst_ptr += 1;
         }
 
-        if end != self.pos {
-            self.iter = self.input[end..].chars();
-            self.cursor = self.iter.next();
-            self.pos = end;
+        if action.is_none() && self.pos != self.input.len() {
+            return VmResult::Error {
+                start,
+                end: self.pos,
+            }
         }
 
-        (start, end, action)
+        if end != self.pos { self.rewind(end) }
+
+        match action {
+            Some(action) =>
+                VmResult::Action { start, end, action },
+            None =>
+                VmResult::Eof
+        }
     }
 }

@@ -1,6 +1,7 @@
 [workspace]
 members = [
+    "sana",
     "sana_core",
-    "sana_test",
     "sana_derive",
+    "sana_test",
 ]

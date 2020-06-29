@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use sana_core::{regex::{Derivative, Regex}, regex::pprint_regex, Rule, automata::{State, Automata}, RuleSet, ir::{pprint_ir, Ir}};
-use sana_derive::Sana;
+use sana::Sana;
 use regex_syntax;
 
 use std::convert::TryFrom;
@@ -10,7 +10,7 @@ mod basic;
 mod logos_basic;
 mod sql;
 
-#[derive(Sana)]
+#[derive(Debug, Clone, Sana)]
 enum Token {
     #[regex(r"[~!@#\^\&|`?+\-*/%<>=]+" & !".*--.*" & !".*/\\*.*", priority = 1)]
     Op,
