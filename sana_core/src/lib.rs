@@ -19,6 +19,7 @@ pub struct Rule<T> {
 }
 
 impl<T: Clone> Rule<T> {
+    /// Construct DFA using regular expression derivatives
     pub fn construct_dfa(&self) -> Automata<T> {
         let state =
             if self.regex.is_nullable() { State::Action(self.action.clone()) }
@@ -63,11 +64,16 @@ impl<T: Clone> Rule<T> {
     }
 }
 
+/// A rule set is just a vector of rules
 pub struct RuleSet<T> {
     pub rules: Vec<Rule<T>>
 }
 
 impl<T: Clone> RuleSet<T> {
+    /// From all rules with index i ∈ rule_indices, return the rule
+    /// with the higherst priority
+    ///
+    /// If there are more than one such rules, return the ambuguity error
     fn top_rule<I>(&self, mut rule_indices: I) -> Result<Option<&Rule<T>>, Error>
     where I: Iterator<Item=usize> {
         let ix =
@@ -91,6 +97,13 @@ impl<T: Clone> RuleSet<T> {
         Ok(Some(&self.rules[top_ix]))
     }
 
+    /// Construct a DFA from a rule set
+    ///
+    /// In the resulting DFA, the action of each action state is set to
+    /// the action of the rule with the highest priority.
+    ///
+    /// If there's more than one rule with the same priority that matches
+    /// the same input, then an ambiguity error is returned
     pub fn construct_dfa(&self) -> Result<Automata<T>, Error> {
         let vector = RegexVector {
             exprs: self.rules.iter().map(|r| r.regex.clone()).collect()

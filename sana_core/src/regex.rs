@@ -10,6 +10,7 @@ use std::{
 use std::ops::Not;
 use crate::automata::CharRange;
 
+// Hashing is used for regular expression normalization
 fn hash<T: Hash>(t: &T) -> u64 {
     let mut s = DefaultHasher::new();
     t.hash(&mut s);
@@ -70,23 +71,43 @@ impl std::hash::Hash for Class {
     }
 }
 
+
+/// A trait for regular expressions derivatives
+///
+/// This trait is the heart of regular expression processing
 pub trait Derivative {
+    /// Find a derivative of regular expression
+    ///
+    /// Let `input = 'c' ⋅ tail`. Then the derivative of `r` by `c`, written
+    /// `c⁻¹ r` is a regular expression that matches `tail` iff `r` matches `input`
     fn derivative(&self, ch: char) -> Self;
+
+    /// Return the derivative classes of a regular expression
     fn class_set(&self) -> ClassSet;
 }
 
 /// Regular expression with logical operations
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Regex {
+    /// `∅`
     Nothing,
+    /// Empty string
     Empty,
+    /// A single character
     Literal(char),
+    /// A class of characters
     Class(Class),
+    /// A regular expression concatenation
     Concat(Vec<Regex>),
+    /// Klenee star
     Loop(Box<Regex>),
+    /// Logical or (alteration)
     Or(Vec<Regex>),
+    /// Logical and (intersection)
     And(Vec<Regex>),
+    /// Complement
     Not(Box<Regex>),
+    /// `¬∅`
     Anything,
 }
 
@@ -197,12 +218,25 @@ fn flatten_and(list: &mut Vec<Regex>) {
 }
 
 impl Regex {
+    /// Create a regular expression that matches the given string
     pub fn literal_str(string: &str) -> Regex {
         if string.is_empty() { return Regex::Empty }
 
         Regex::Concat(string.chars().map(|ch| Regex::Literal(ch)).collect())
     }
 
+    /// Normalize the regular expression
+    ///
+    /// The purpose of normalization is to make equivalent expressions equal. This
+    /// limits the number of all possible derivatives to a finite set, allowing
+    /// DFA construction.
+    ///
+    /// The approach is rather straightforward:
+    /// - The effective data structure for a monoid is a flat list
+    /// - For a *commutative* monoid, it's a sorted flat list
+    /// - Idempotence eliminates repetitions
+    ///
+    /// Since a particular order does not matter, lists are sorted by hash
     pub fn normalize(&mut self) {
         match self {
             Regex::Concat(list) => {
@@ -301,6 +335,9 @@ impl Regex {
         }
     }
 
+    /// Check if a regular expression is nullable
+    ///
+    /// A regular expression is *nullable* if it matches the empty string
     pub fn is_nullable(&self) -> bool {
         match self {
             Regex::Nothing => false,
@@ -469,12 +506,21 @@ impl TryFrom<hir::Hir> for Regex {
     }
 }
 
+
+/// Derivative class set
+///
+/// Two characters `a` and `b` belong to the same derivative class of
+/// regular expression `r` iff `a⁻¹ r = b⁻¹ r`
+///
+/// A class set of a regular expression is a set of all derivative classes
+/// of that expression
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassSet {
     set: HashSet<Class>,
 }
 
 impl ClassSet {
+    /// Create a new class set containing a full class
     pub fn new() -> ClassSet {
         let mut set = HashSet::new();
         set.insert(Class::full());
@@ -482,6 +528,7 @@ impl ClassSet {
         ClassSet { set }
     }
 
+    /// Create a class set from a class
     pub fn from_class(class: &Class) -> ClassSet {
         let mut complement = Class::full();
         complement.0.difference(&class.0);
@@ -493,6 +540,7 @@ impl ClassSet {
         ClassSet { set }
     }
 
+    /// Join class sets
     pub fn join(&self, other: &ClassSet) -> ClassSet {
         if other.set.is_empty() { return self.clone() }
 
@@ -509,6 +557,7 @@ impl ClassSet {
         ClassSet { set }
     }
 
+    /// Find an approximation of a class set for given regular expression
     pub fn from_regex(regex: &Regex) -> ClassSet {
         match regex {
             Regex::Nothing
@@ -549,6 +598,7 @@ impl ClassSet {
         }
     }
 
+    /// Find an approximation of a class set for given regular vector
     pub fn from_vector(vec: &RegexVector) -> ClassSet {
         vec.exprs.iter()
             .fold(
@@ -568,13 +618,17 @@ impl ClassSet {
     }
 }
 
+/// A regular expression vector
+///
+/// It behaves like alteration, but remembers the state of all regular expressions
+/// allowing to asign an action that corresponds to a particular expression
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RegexVector {
     pub exprs: Vec<Regex>,
 }
 
-impl RegexVector {
-    pub fn derivative(&self, ch: char) -> Self {
+impl Derivative for RegexVector {
+    fn derivative(&self, ch: char) -> Self {
         let exprs = self.exprs.iter()
             .map(|e| e.derivative(ch))
             .collect();
@@ -582,6 +636,13 @@ impl RegexVector {
         RegexVector { exprs }
     }
 
+    fn class_set(&self) -> ClassSet {
+        ClassSet::from_vector(self)
+    }
+}
+
+impl RegexVector {
+    /// Find the indices of all nullable expressions of the RegexVector
     pub fn nullables<'a>(&'a self) -> impl Iterator<Item=usize> + 'a {
         self.exprs.iter().enumerate()
             .filter(|(_, e)| e.is_nullable())

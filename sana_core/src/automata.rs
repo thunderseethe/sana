@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::ops::{RangeInclusive};
+use std::ops::RangeInclusive;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum State<T> {
@@ -14,6 +14,16 @@ pub struct CharRange {
     pub end: char,
 }
 
+/// Kinds of automata nodes
+///
+/// - A sink node is a node with more than one arrow pointing to the node
+/// - A fork node is a non-sink node with more than one arrow pointing
+/// from the node
+/// - A link node is a non-sink node with only one transition from it
+/// besides the the terminal arrow
+/// - A leaf node is a non-sink node with only terminal transition
+/// - A terminal node is a node such as the only transition from it
+/// is a full range loop
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NodeKind {
     Fork,
@@ -45,6 +55,7 @@ fn state_range(state: usize) -> RangeInclusive<(usize, CharRange)> {
     (state, min)..=(state, max)
 }
 
+/// Finite state automata
 #[derive(Debug, Clone)]
 pub struct Automata<T> {
     pub states: Vec<State<T>>,
@@ -52,6 +63,7 @@ pub struct Automata<T> {
 }
 
 impl<T> Automata<T> {
+    /// Create an automata with given inital state
     pub(crate) fn new(inital: State<T>) -> Self {
         Automata {
             states: vec![inital],
@@ -59,18 +71,23 @@ impl<T> Automata<T> {
         }
     }
 
+    /// Get a state by index
     pub fn get(&self, ix: usize) -> Option<&State<T>> {
         self.states.get(ix)
     }
 
+    /// Insert state into the automata
     pub fn insert_state(&mut self, state: State<T>) {
         self.states.push(state)
     }
 
+    /// Insert transition from state with index `from` to state with index
+    /// `to` with the character range `range`
     pub fn insert_edge(&mut self, from: usize, to: usize, range: CharRange) {
         self.edges.insert((from, range), to);
     }
 
+    /// An iterator of all transitions from the given state
     pub fn transitions_from(&self, state: usize) ->
         impl Iterator<Item=(&CharRange, usize)>
     {
@@ -78,12 +95,14 @@ impl<T> Automata<T> {
             .map(|(k, &v)| (&k.1, v))
     }
 
+    /// Follow a transition from the given state that by the given char
     pub fn transite(&self, state: usize, ch: char) -> Option<usize> {
         self.transitions_from(state)
             .find(|t| t.0.contains(ch))
             .map(|(_, state)| state)
     }
 
+    /// Find the terminal node of the automata
     pub fn find_terminal_node(&self) -> usize {
         for i in 0..self.states.len() {
             let ends: Vec<_> = self.transitions_from(i)
@@ -97,6 +116,10 @@ impl<T> Automata<T> {
         panic!("Automata without a terminal state")
     }
 
+    /// Return a list of node kinds of the automata states
+    ///
+    /// The indices of kinds in the list match the indices of
+    /// corresponding states in the automata
     pub fn node_kinds(&self) -> Vec<NodeKind> {
         let terminal = self.find_terminal_node();
         let mut coedges = BTreeMap::new();

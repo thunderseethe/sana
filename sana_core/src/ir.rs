@@ -2,6 +2,7 @@ use std::{ops::Not, collections::VecDeque};
 
 use crate::automata::{Automata, NodeKind, State};
 
+/// An intermediate representation
 pub struct Ir<T> {
     pub blocks: Vec<Block<T>>
 }
@@ -29,8 +30,10 @@ impl<T> Block<T> {
     }
 }
 
+/// IR opcodes
 #[derive(Debug, Clone, PartialEq)]
 pub enum Op<T> {
+    /// Shift the cursor to the next character
     Shift,
     /// Jump if matches
     JumpMatches {
@@ -52,6 +55,7 @@ pub enum Op<T> {
     Jump(usize),
     /// Set current action
     Set(T),
+    /// Halt and return an action, if any
     Halt,
 }
 
@@ -95,6 +99,7 @@ fn pprint_op<T: std::fmt::Debug>(op: &Op<T>) {
 }
 
 impl<T: Clone> Ir<T> {
+    /// Create IR from DFA
     pub fn from_automata(automata: Automata<T>) -> Ir<T> {
         let terminal = automata.find_terminal_node();
         let node_kinds = automata.node_kinds();
@@ -238,6 +243,7 @@ impl<T: Clone> Ir<T> {
         Ir { blocks }
     }
 
+    /// Convert IR to the code suitable for VM execution
     pub fn flatten(&self) -> Vec<Op<T>> {
         let mut code = vec![];
         let mut symbol_map = Vec::with_capacity(self.blocks.len());
@@ -302,12 +308,14 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
         self.cursor = self.iter.next();
     }
 
+    /// Set the cursor position
     pub fn rewind(&mut self, pos: usize) {
         self.iter = self.input[pos..].chars();
         self.cursor = self.iter.next();
         self.pos = pos;
     }
 
+    /// Execute the loaded code
     pub fn run(&mut self) -> VmResult<T> {
         let mut inst_ptr = 0;
         let mut jump_ptr = 0;

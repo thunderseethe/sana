@@ -2,12 +2,14 @@ pub use sana_derive::Sana;
 
 use sana_core::ir::{Op, Vm};
 
+/// The type implemented by `#[derive(Sana)]`
 pub trait Sana: Sized + Clone {
     const ERROR: Self;
 
     #[doc(hidden)]
     fn ir() -> &'static [Op<Self>];
 
+    /// Create a new `Lexer` that will produce tokens of this type
     fn lexer<'input>(input: &'input str) -> Lexer<'input, Self> {
         Lexer::new(input)
     }
@@ -19,6 +21,10 @@ pub struct Lexer<'input, Token: Sana + 'static> {
 }
 
 impl<'input, Token: Sana> Lexer<'input, Token> {
+    /// Create a new `Lexer` on the given input
+    ///
+    /// **NOTE:** for better type inference it's prefered
+    /// to use `Sana::lexer` instead
     pub fn new(input: &'input str) -> Self {
         let ir = Token::ir();
         let vm = Vm::new(ir, input);
@@ -27,6 +33,7 @@ impl<'input, Token: Sana> Lexer<'input, Token> {
     }
 }
 
+/// Token together with its range
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spanned<T> {
     pub start: usize,
