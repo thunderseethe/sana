@@ -296,10 +296,10 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
     }
 
     fn shift(&mut self) {
-        self.cursor = self.iter.next();
         self.pos += self.cursor
             .map(char::len_utf8)
             .unwrap_or(1);
+        self.cursor = self.iter.next();
     }
 
     pub fn rewind(&mut self, pos: usize) {
