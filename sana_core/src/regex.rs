@@ -3,8 +3,6 @@ use regex_syntax::hir;
 use std::{
     hash::{Hash, Hasher},
     convert::TryFrom,
-    collections::hash_map::DefaultHasher,
-    collections::HashSet,
 };
 
 use std::ops::Not;
@@ -12,7 +10,7 @@ use crate::automata::CharRange;
 
 // Hashing is used for regular expression normalization
 fn hash<T: Hash>(t: &T) -> u64 {
-    let mut s = DefaultHasher::new();
+    let mut s = fnv::FnvHasher::default();
     t.hash(&mut s);
     s.finish()
 }
@@ -516,13 +514,13 @@ impl TryFrom<hir::Hir> for Regex {
 /// of that expression
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassSet {
-    set: HashSet<Class>,
+    set: fnv::FnvHashSet<Class>,
 }
 
 impl ClassSet {
     /// Create a new class set containing a full class
     pub fn new() -> ClassSet {
-        let mut set = HashSet::new();
+        let mut set = fnv::FnvHashSet::default();
         set.insert(Class::full());
 
         ClassSet { set }
@@ -533,7 +531,7 @@ impl ClassSet {
         let mut complement = Class::full();
         complement.0.difference(&class.0);
 
-        let mut set = HashSet::new();
+        let mut set = fnv::FnvHashSet::default();
         set.insert(class.clone());
         set.insert(complement);
 
@@ -544,7 +542,7 @@ impl ClassSet {
     pub fn join(&self, other: &ClassSet) -> ClassSet {
         if other.set.is_empty() { return self.clone() }
 
-        let mut set = HashSet::new();
+        let mut set = fnv::FnvHashSet::default();
         for left in &self.set {
             for right in &other.set {
                 let mut intersect = left.clone();
