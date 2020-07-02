@@ -1,5 +1,5 @@
 pub use sana_derive::Sana;
-pub use sana_core as core;
+pub use sana_core::ir;
 
 use sana_core::ir::{Op, Vm};
 

@@ -25,12 +25,12 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
     let error = spec.terminal;
 
     quote! {
-        const #ir_var: &'static [sana::core::ir::Op<#enum_ident>] = #ir_code;
+        const #ir_var: &'static [sana::ir::Op<#enum_ident>] = #ir_code;
 
         impl sana::Sana for #enum_ident {
             const ERROR: Self = #enum_ident::#error;
 
-            fn ir() -> &'static [sana::core::ir::Op<Self>] { #ir_code }
+            fn ir() -> &'static [sana::ir::Op<Self>] { #ir_code }
         }
     }
 }
@@ -42,38 +42,38 @@ fn generate_ir(enum_ident: Ident, ir: Ir<usize>, variants: &[Ident]) -> TokenStr
     for op in code {
         let op = match op {
             Op::Shift => quote! {
-                sana::core::ir::Op::Shift
+                sana::ir::Op::Shift
             },
             Op::JumpMatches { from, to, on_success } => quote! {
-                sana::core::ir::Op::JumpMatches {
+                sana::ir::Op::JumpMatches {
                     from: #from,
                     to: #to,
                     on_success: #on_success,
                 }
             },
             Op::JumpNotMatches { from, to, on_failure } => quote! {
-                sana::core::ir::Op::JumpNotMatches {
+                sana::ir::Op::JumpNotMatches {
                     from: #from,
                     to: #to,
                     on_failure: #on_failure,
                 }
             },
             Op::LoopMatches { from, to } => quote! {
-                sana::core::ir::Op::LoopMatches {
+                sana::ir::Op::LoopMatches {
                     from: #from,
                     to: #to,
                 }
             },
             Op::Jump(loc) => quote! {
-                sana::core::ir::Op::Jump(#loc)
+                sana::ir::Op::Jump(#loc)
             },
             Op::Set(act) => {
                 let var = &variants[act];
 
-                quote! { sana::core::ir::Op::Set(#enum_ident::#var) }
+                quote! { sana::ir::Op::Set(#enum_ident::#var) }
             },
             Op::Halt => quote! {
-                sana::core::ir::Op::Halt
+                sana::ir::Op::Halt
             },
         };
 
