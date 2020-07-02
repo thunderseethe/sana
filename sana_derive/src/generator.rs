@@ -64,6 +64,9 @@ fn generate_ir(enum_ident: Ident, ir: Ir<usize>, variants: &[Ident]) -> TokenStr
                     to: #to,
                 }
             },
+            Op::Jump(loc) => quote! {
+                sana_core::ir::Op::Jump(#loc)
+            },
             Op::Set(act) => {
                 let var = &variants[act];
 
@@ -72,7 +75,6 @@ fn generate_ir(enum_ident: Ident, ir: Ir<usize>, variants: &[Ident]) -> TokenStr
             Op::Halt => quote! {
                 sana_core::ir::Op::Halt
             },
-            _ => todo!(),
         };
 
         ops.push(op)
