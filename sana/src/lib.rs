@@ -1,4 +1,5 @@
 pub use sana_derive::Sana;
+pub use sana_core as core;
 
 use sana_core::ir::{Op, Vm};
 
@@ -30,6 +31,25 @@ impl<'input, Token: Sana> Lexer<'input, Token> {
         let vm = Vm::new(ir, input);
 
         Lexer { vm }
+    }
+
+    pub fn morph<Lexeme: Sana + 'static>(self) -> Lexer<'input, Lexeme> {
+        let mut lexer = Lexeme::lexer(self.source());
+        lexer.rewind(self.position());
+
+        lexer
+    }
+
+    pub fn rewind(&mut self, pos: usize) {
+        self.vm.rewind(pos)
+    }
+
+    pub fn position(&self) -> usize {
+        self.vm.position()
+    }
+
+    pub fn source(&self) -> &'input str {
+        self.vm.input
     }
 }
 

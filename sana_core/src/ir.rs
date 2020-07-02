@@ -285,8 +285,8 @@ pub enum VmResult<T> {
 
 #[derive(Debug, Clone)]
 pub struct Vm<'code, 'input, T> {
+    pub input: &'input str,
     code: &'code [Op<T>],
-    input: &'input str,
     iter: std::str::Chars<'input>,
     cursor: Option<char>,
     pos: usize,
@@ -299,6 +299,10 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
         let pos = 0;
 
         Vm { code, input, iter, cursor, pos }
+    }
+
+    pub fn position(&self) -> usize {
+        self.pos
     }
 
     fn shift(&mut self) {
