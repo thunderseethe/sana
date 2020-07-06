@@ -504,6 +504,34 @@ impl TryFrom<hir::Hir> for Regex {
     }
 }
 
+fn collect_classes(classes: &mut Vec<Class>, regex: &Regex) {
+    match regex {
+        Regex::Nothing
+        | Regex::Empty
+        | Regex::Anything => (),
+        Regex::Literal(literal) =>
+            classes.push(Class::from_literal(*literal)),
+        Regex::Class(class) =>
+            classes.push(class.clone()),
+        Regex::Concat(list) => {
+            collect_classes(classes, &list[0]);
+
+            for i in 1..list.len() {
+                if list[i - 1].is_nullable().not() { break }
+
+                collect_classes(classes, &list[i])
+            }
+        },
+        Regex::Loop(e) =>
+            collect_classes(classes, e),
+        Regex::Or(list) =>
+            for e in list { collect_classes(classes, e) },
+        Regex::And(list) =>
+            for e in list { collect_classes(classes, e) },
+        Regex::Not(e) =>
+            collect_classes(classes, e),
+    };
+}
 
 /// Derivative class set
 ///
@@ -514,95 +542,50 @@ impl TryFrom<hir::Hir> for Regex {
 /// of that expression
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassSet {
-    set: fnv::FnvHashSet<Class>,
+    set: Vec<Class>,
 }
 
 impl ClassSet {
-    /// Create a new class set containing a full class
-    pub fn new() -> ClassSet {
-        let mut set = fnv::FnvHashSet::default();
-        set.insert(Class::full());
+    fn from_classes(classes: &[Class]) -> Self {
+        let mut set: Vec<Class> = Vec::with_capacity(2 * classes.len());
+        set.push(Class::full());
 
-        ClassSet { set }
-    }
+        for cl in classes {
+            let len = set.len();
+            for i in 0..len {
+                set.push(set[i].clone())
+            }
 
-    /// Create a class set from a class
-    pub fn from_class(class: &Class) -> ClassSet {
-        let mut complement = Class::full();
-        complement.0.difference(&class.0);
+            for inner in &mut set[0..len] {
+                inner.0.intersect(&cl.0)
+            }
+            for inner in &mut set[len..] {
+                inner.0.difference(&cl.0)
+            }
 
-        let mut set = fnv::FnvHashSet::default();
-        set.insert(class.clone());
-        set.insert(complement);
-
-        ClassSet { set }
-    }
-
-    /// Join class sets
-    pub fn join(&self, other: &ClassSet) -> ClassSet {
-        if other.set.is_empty() { return self.clone() }
-
-        let mut set = fnv::FnvHashSet::default();
-        for left in &self.set {
-            for right in &other.set {
-                let mut intersect = left.clone();
-                intersect.0.intersect(&right.0);
-
-                set.insert(intersect);
+            if set.len() > 64 {
+                set.sort_by(|l, r| hash(l).cmp(&hash(r)));
+                set.dedup()
             }
         }
 
         ClassSet { set }
     }
 
-    /// Find an approximation of a class set for given regular expression
     pub fn from_regex(regex: &Regex) -> ClassSet {
-        match regex {
-            Regex::Nothing
-            | Regex::Empty
-            | Regex::Anything =>
-                ClassSet::new(),
-            Regex::Literal(literal) => {
-                let class = Class::from_literal(*literal);
+        let mut classes = vec![];
+        collect_classes(&mut classes, regex);
 
-                ClassSet::from_class(&class)
-            },
-            Regex::Class(class) =>
-                ClassSet::from_class(class),
-            Regex::Concat(list) => {
-                let mut set = ClassSet::from_regex(&list[0]);
-                for i in 1..list.len() {
-                    if list[i - 1].is_nullable().not() { break }
-
-                    set = set.join(&ClassSet::from_regex(&list[i]))
-                }
-
-                set
-            },
-            Regex::Loop(e) =>
-                ClassSet::from_regex(e),
-            Regex::Or(list) =>
-                list[1..].iter().fold(
-                    ClassSet::from_regex(&list[0]),
-                    |set, r| set.join(&ClassSet::from_regex(r))
-                ),
-            Regex::And(list) =>
-                list[1..].iter().fold(
-                    ClassSet::from_regex(&list[0]),
-                    |set, r| set.join(&ClassSet::from_regex(r))
-                ),
-            Regex::Not(e) =>
-                ClassSet::from_regex(e),
-        }
+        Self::from_classes(&classes)
     }
 
-    /// Find an approximation of a class set for given regular vector
-    pub fn from_vector(vec: &RegexVector) -> ClassSet {
-        vec.exprs.iter()
-            .fold(
-                ClassSet::new(),
-                |set, e| set.join(&ClassSet::from_regex(e))
-            )
+    pub fn from_vector(vector: &RegexVector) -> ClassSet {
+        let mut classes = vec![];
+        for e in &vector.exprs {
+            collect_classes(&mut classes, e)
+        }
+
+        Self::from_classes(&classes)
     }
 
     pub fn classes<'a>(&'a self) -> impl Iterator<Item=&'a Class> + 'a {

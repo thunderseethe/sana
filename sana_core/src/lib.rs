@@ -1,4 +1,4 @@
-use regex::{ClassSet, Regex, Derivative, RegexVector};
+use regex::{Regex, Derivative, RegexVector};
 use automata::{State, Automata};
 use std::collections::{HashMap, VecDeque};
 
@@ -34,7 +34,7 @@ impl<T: Clone> Rule<T> {
 
         while let Some(r) = queue.pop_front() {
             let from = *stored.get(&r).unwrap();
-            let set = ClassSet::from_regex(&r);
+            let set = r.class_set();
 
             for class in set.classes() {
                 let dr = r.derivative(class.pick());
@@ -124,7 +124,7 @@ impl<T: Clone> RuleSet<T> {
 
         while let Some(vec) = queue.pop_front() {
             let from = *stored.get(&vec).unwrap();
-            let set = ClassSet::from_vector(&vec);
+            let set = vec.class_set();
 
             for class in set.classes() {
                 let dvec = vec.derivative(class.pick());
