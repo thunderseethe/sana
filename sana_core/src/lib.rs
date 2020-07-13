@@ -1,3 +1,13 @@
+//! This is the core of Sana.
+//!
+//! Specifically, this crate provides the following:
+//!
+//! - Extended regular expression derivatives
+//! - DFA construction for a rule set
+//! - IR generation from a DFA
+//!
+//! If you just want generate a lexer, use the main crate (`sana`) instead.
+
 use regex::{Regex, Derivative, RegexVector};
 use automata::{State, Automata};
 use std::collections::{HashMap, VecDeque};
@@ -7,11 +17,19 @@ pub mod automata;
 pub mod ir;
 pub mod dot;
 
+/// DFA construction error
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
+    /// Ambiguity error for rules with given indices
+    ///
+    /// The rules can match the same string but have the same precedence
     AmbiguityError(usize, usize)
 }
 
+/// A lexer rule
+///
+/// It usually corresponds to a token
+#[derive(Debug, Clone, PartialEq)]
 pub struct Rule<T> {
     pub regex: Regex,
     pub priority: usize,
@@ -65,6 +83,7 @@ impl<T: Clone> Rule<T> {
 }
 
 /// A rule set is just a vector of rules
+#[derive(Debug, Clone, PartialEq)]
 pub struct RuleSet<T> {
     pub rules: Vec<Rule<T>>
 }

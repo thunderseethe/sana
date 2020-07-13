@@ -47,7 +47,7 @@ pub(crate) fn parse_attr(attr: Attribute) -> Option<Spanned<SanaAttr>> {
 
 fn parse_regex_not(input: ParseStream) -> syn::Result<Regex> {
     if input.peek(Token![!]) {
-        drop(input.parse::<Token![!]>());
+        input.parse::<Token![!]>()?;
         let inner = parse_regex_not(input)?;
 
         Ok(Regex::Not(Box::new(inner)))
@@ -75,7 +75,7 @@ impl Parse for RegexExpr {
 
         let mut union = vec![];
         while input.peek(Token![&]) {
-            drop(input.parse::<Token![&]>()?);
+            input.parse::<Token![&]>()?;
             union.push(parse_regex_not(input)?);
         }
 
@@ -102,7 +102,9 @@ enum Value {
 impl Parse for KeyValue {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let key = input.parse()?;
-        drop(input.parse::<Token![=]>()?);
+
+        input.parse::<Token![=]>()?;
+
         let value =
             if input.peek(LitInt) {
                 Value::Int(input.parse()?)
@@ -142,7 +144,7 @@ impl Parse for RegexAttr {
             })
         }
         else {
-            drop(input.parse::<Token![,]>()?);
+            input.parse::<Token![,]>()?;
         }
 
         let mut priority = 0;
@@ -151,9 +153,7 @@ impl Parse for RegexAttr {
         for kv in kvs {
             match &*kv.key.to_string() {
                 "priority" => {
-                    let value = match kv.value {
-                        Value::Int(i) => i,
-                    };
+                    let Value::Int(value) = kv.value;
 
                     priority = value.base10_parse()?;
                 },
@@ -184,7 +184,7 @@ impl Parse for TokenAttr {
             })
         }
         else {
-            drop(input.parse::<Token![,]>()?);
+            input.parse::<Token![,]>()?;
         }
 
         let mut priority = 0;
@@ -193,9 +193,7 @@ impl Parse for TokenAttr {
         for kv in kvs {
             match &*kv.key.to_string() {
                 "priority" => {
-                    let value = match kv.value {
-                        Value::Int(i) => i,
-                    };
+                    let Value::Int(value) = kv.value;
 
                     priority = value.base10_parse()?;
                 },

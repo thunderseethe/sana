@@ -48,7 +48,7 @@ impl Class {
             }
         }
 
-        return false
+        false
     }
 
     pub fn pick(&self) -> char {
@@ -61,6 +61,7 @@ impl Class {
     }
 }
 
+#[allow(clippy::derive_hash_xor_eq)]
 impl std::hash::Hash for Class {
     fn hash<H: Hasher>(&self, hasher: &mut H) {
         for r in self.0.ranges() {
@@ -220,7 +221,7 @@ impl Regex {
     pub fn literal_str(string: &str) -> Regex {
         if string.is_empty() { return Regex::Empty }
 
-        Regex::Concat(string.chars().map(|ch| Regex::Literal(ch)).collect())
+        Regex::Concat(string.chars().map(Regex::Literal).collect())
     }
 
     /// Normalize the regular expression
@@ -343,15 +344,12 @@ impl Regex {
             Regex::Literal(_) => false,
             Regex::Class(c) => c.is_empty(),
             Regex::Concat(list) =>
-                list.iter()
-                    .fold(true, |res, e| res && e.is_nullable()),
+                list.iter().all(|e| e.is_nullable()),
             Regex::Loop(_) => true,
             Regex::Or(list) =>
-                list.iter()
-                    .fold(false, |res, e| res || e.is_nullable()),
+                list.iter().any(|e| e.is_nullable()),
             Regex::And(list) =>
-                list.iter()
-                    .fold(true, |res, e| res && e.is_nullable()),
+                list.iter().all(|e| e.is_nullable()),
             Regex::Not(e) => e.is_nullable().not(),
             Regex::Anything => true,
         }
@@ -467,7 +465,7 @@ impl TryFrom<hir::Hir> for Regex {
                 Err("Only Unicode classes are supported"),
             HirKind::Repetition(repetition) => {
                 if repetition.greedy.not() {
-                    Err("#[regex]: non-greedy parsing is currently unsupported.")?;
+                    return Err("#[regex]: non-greedy parsing is currently unsupported.");
                 }
 
                 let kind = repetition.kind;
@@ -487,7 +485,7 @@ impl TryFrom<hir::Hir> for Regex {
                         ]))
                     },
                     RepetitionKind::Range(..) => {
-                        Err("#[regex]: {n,m} repetition range is currently unsupported.")?
+                        Err("#[regex]: {n,m} repetition range is currently unsupported.")
                     },
                 }
             },
@@ -495,10 +493,10 @@ impl TryFrom<hir::Hir> for Regex {
                 Regex::try_from(*group.hir)
             },
             HirKind::WordBoundary(_) => {
-                Err("#[regex]: word boundaries are currently unsupported.")?
+                Err("#[regex]: word boundaries are currently unsupported.")
             },
             HirKind::Anchor(_) => {
-                Err("#[regex]: anchors in #[regex] are currently unsupported.")?
+                Err("#[regex]: anchors in #[regex] are currently unsupported.")
             },
         }
     }

@@ -1,3 +1,34 @@
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use sana_core::{Rule, RuleSet, regex::Regex};
+
+use std::convert::TryFrom;
+
+pub fn sql_dfa(c: &mut Criterion) {
+    let rules: Vec<_> = keywords().iter()
+        .map(|(regex, act)|  {
+            let hir = regex_syntax::Parser::new()
+                .parse(regex).unwrap();
+            let regex = Regex::try_from(hir).unwrap();
+
+            Rule {
+                regex,
+                priority: 0,
+                action: *act
+            }
+        })
+        .collect();
+
+    let ruleset = RuleSet { rules };
+
+    c.bench_function(
+        "SQL DFA construction",
+        |b| b.iter(|| black_box(&ruleset).construct_dfa().unwrap())
+    );
+}
+
+criterion_group!(benches, sql_dfa);
+criterion_main!(benches);
+
 pub fn keywords() -> &'static [(&'static str, &'static str)] {
     &[
         ( r"(?i)abort", "KwAbort" ),

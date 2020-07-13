@@ -59,6 +59,7 @@ pub enum Op<T> {
     Halt,
 }
 
+/// Pretty print the IR
 pub fn pprint_ir<T: std::fmt::Debug>(ir: &Ir<T>) {
     for (i, block) in ir.blocks.iter().enumerate() {
         match block {
@@ -201,8 +202,11 @@ impl<T: Clone> Ir<T> {
                         });
                     }
 
+                    let mut jumps = 0;
                     for (ch, to) in next {
                         if to == terminal { continue }
+
+                        jumps += 1;
 
                         if state_blocks[to].is_none() {
                             queue.push_back(to)
@@ -221,6 +225,10 @@ impl<T: Clone> Ir<T> {
                             on_failure: terminal_block,
                         });
                         blocks[block_ix].push(Op::Jump(to_block));
+                    }
+
+                    if jumps == 0 {
+                        blocks[block_ix].push(Op::Halt)
                     }
                 },
                 NodeKind::Leaf => {
@@ -270,17 +278,21 @@ impl<T: Clone> Ir<T> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+/// Result returned by `Vm`
 pub enum VmResult<T> {
+    /// Action with span `start..end`
     Action {
         start: usize,
         end: usize,
         action: T
     },
+    /// Error with span `start..end`
     Error {
         start: usize,
         end: usize,
     },
-    Eof,
+    /// End of input
+    Eoi,
 }
 
 #[derive(Debug, Clone)]
@@ -329,7 +341,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
         let mut end = start;
 
         if self.cursor.is_none() {
-            return VmResult::Eof
+            return VmResult::Eoi
         }
 
         loop {
@@ -402,7 +414,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
             Some(action) =>
                 VmResult::Action { start, end, action },
             None =>
-                VmResult::Eof
+                VmResult::Eoi
         }
     }
 }

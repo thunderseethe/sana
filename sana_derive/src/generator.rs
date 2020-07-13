@@ -25,6 +25,7 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
     let error = spec.terminal;
 
     quote! {
+        #[doc(hidden)]
         const #ir_var: &'static [sana::ir::Op<#enum_ident>] = #ir_code;
 
         impl sana::Sana for #enum_ident {

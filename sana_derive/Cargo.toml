@@ -3,6 +3,10 @@ name = "sana_derive"
 version = "0.1.0"
 authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
 license = "MIT"
+description = "The derive macro for Sana"
+keywords = ["lexer", "scanner", "tokenizer", "generator"]
+categories = ["parsing", "text-processing"]
+readme = "../README.md"
 edition = "2018"
 
 [lib]

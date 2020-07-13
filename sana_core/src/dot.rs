@@ -7,7 +7,7 @@ type Edge = (usize, CharRange, usize);
 
 impl<'a, T> GraphWalk<'a, usize, Edge> for Automata<T> {
     fn nodes(&'a self) -> Nodes<'a, usize> {
-        (0..self.states.len()).into_iter().collect()
+        (0..self.states.len()).collect()
     }
 
     fn edges(&'a self) -> Edges<'a, Edge> {
@@ -42,7 +42,7 @@ impl<'a, T> Labeller<'a, usize, Edge> for Automata<T> {
         let label =
             match (class.start, class.end) {
                 ('\0', '\u{10ffff}') =>
-                    format!("*"),
+                    "*".to_string(),
                 (a, b) if a == b =>
                     format!("{}", a),
                 (a, b) => {

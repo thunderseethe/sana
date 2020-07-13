@@ -8,9 +8,9 @@ An overall architecture of Sana can be described with the following diagram.
 
 Sana supports a subset of [regex](https://lib.rs/crates/regex) regular expressions extended with intersection and complement operations.
 
-The semantics of this operation can be describes as follows:
+The semantics of this operations can be describes as follows:
 
-- `r1 & r2` matches iff `r1` matches and `r2` matches
+- `r1 & r2` matches iff `r1` matches *and* `r2` matches
 - `!r` matches iff r1 does *not* match
 
 For example, `"[[:punct:]]+" & !".*--.*"` matches a sequence of punctuation characters that does not contain `--`.

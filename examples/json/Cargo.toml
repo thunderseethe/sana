@@ -1,0 +1,9 @@
+[package]
+name = "json"
+version = "0.1.0"
+authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+sana = { version = "0.1.0", path = "../../sana" }

@@ -62,7 +62,7 @@ fn basic_lexer() {
                 }
             }
             else {
-                VmResult::Eof
+                VmResult::Eoi
             };
 
         assert_eq!(gold, res);

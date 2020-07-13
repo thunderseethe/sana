@@ -23,3 +23,7 @@ steps:
   image: rust
   commands:
     - cargo test --verbose
+- name: Clippy
+  image: rust
+  commands:
+    - cargo clippy

@@ -2,12 +2,22 @@
 name = "sana_core"
 version = "0.1.0"
 authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
+license = "MIT"
+description = "The core of Sana"
+keywords = ["lexer", "scanner", "tokenizer", "generator"]
+categories = ["parsing", "text-processing"]
+readme = "../README.md"
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 fnv = "1.0.3"
 regex-syntax = "0.6"
 utf8-ranges = "1.0"
 dot = "0.1"
+
+[dev-dependencies]
+criterion = "0.3"
+
+[[bench]]
+name = "sql"
+harness = false

@@ -43,7 +43,7 @@ impl CharRange {
         CharRange { start, end }
     }
 
-    fn contains(&self, ch: char) -> bool {
+    fn contains(self, ch: char) -> bool {
         ch >= self.start && ch <= self.end
     }
 }
@@ -128,9 +128,9 @@ impl<T> Automata<T> {
         }
 
         let mut kinds = vec![NodeKind::Fork; self.states.len()];
-        for i in 0..self.states.len() {
+        for (i, kind) in kinds.iter_mut().enumerate() {
             if i == terminal {
-                kinds[i] = NodeKind::Terminal;
+                *kind = NodeKind::Terminal;
                 continue
             }
 
@@ -140,14 +140,14 @@ impl<T> Automata<T> {
                 .filter(|(&(end, _), &start)| start != i && end != terminal);
 
             if far_coedges.count() > 1 {
-                kinds[i] = NodeKind::Sink
+                *kind = NodeKind::Sink
             }
             else {
                 match far_edges.count() {
                     0 =>
-                        kinds[i] = NodeKind::Leaf,
+                        *kind = NodeKind::Leaf,
                     1 =>
-                        kinds[i] = NodeKind::Link,
+                        *kind = NodeKind::Link,
                     _ => (),
                 }
             }

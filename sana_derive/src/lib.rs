@@ -1,14 +1,14 @@
-use crate::parser::TokenAttr;
-use crate::parser::RegexAttr;
-use crate::parser::parse_attr;
-use crate::parser::SanaAttr;
 use proc_macro::TokenStream;
 use proc_macro_error::*;
 use proc_macro2::Span;
 use syn::{Ident, ItemEnum};
 
+use std::ops::Not;
+
 use sana_core::RuleSet;
 use sana_core::{Rule, regex::Regex};
+
+use parser::{parse_attr, TokenAttr, RegexAttr, SanaAttr};
 
 mod parser;
 mod generator;
@@ -26,6 +26,7 @@ struct SanaVariant {
 }
 
 #[allow(dead_code)]
+#[derive(Debug, Clone)]
 struct SanaSpec {
     enum_ident: Ident,
     rules: RuleSet<usize>,
@@ -42,7 +43,7 @@ fn parse_variant(var: syn::Variant) -> Option<SanaVariant> {
     if attrs.is_empty() {
         return None
     }
-    if var.fields.len() != 0 {
+    if var.fields.is_empty().not() {
         emit_error!(var.fields, "Enum variants with fields are not supported");
         return None
     }
@@ -130,11 +131,39 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
     }
 }
 
+/// Derives lexer for the given enum
+///
+/// # Attributes
+///
+/// - `#[error]`: Marks the given variant as the error variant. There must be
+/// exactly one error variant for a given enum
+/// - `#[regex(re)]`: specify the regular expression corresponding to
+/// the given variant
+/// - `#[token(tok)]`: specify the string corresponding to the given variant
+///
+/// Attributes `regex` and `token` can also receive the following parameters:
+///
+/// - `priority = <integer>` (default is `0`): the priority for the rule
+///
+/// # Regular expression syntax
+///
+/// Regular expression, passed to attribute `regex`, has the following syntax:
+///
+/// ```text
+/// regex =
+///     regex '&' regex
+///     / '!' regex
+///     / literal
+/// ```
+///
+/// Here, `literal` is rust string literal containing regular expression using
+/// the [regex](https://docs.rs/regex) crate syntax. `&` denotes the intersection
+/// of regular expressions while `!` denotes the complement of regular expression.
 #[proc_macro_error]
 #[proc_macro_derive(Sana, attributes(error, regex, token))]
 pub fn sana(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input)
-        .expect("Sana can be only be derived for enums");
+        .expect_or_abort("Sana can be only be derived for enums");
 
     let spec = build_spec(item);
 
