@@ -3,5 +3,5 @@ members = [
     "sana",
     "sana_core",
     "sana_derive",
-    "examples/json",
+    "examples",
 ]
