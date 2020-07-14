@@ -134,7 +134,7 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
     }
 
     if terminal.is_none() {
-        abort!(enum_ident, "The enum lacks an #[end] token")
+        abort!(enum_ident, "The enum lacks an #[error] token")
     }
 
     SanaSpec {
