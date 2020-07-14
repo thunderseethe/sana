@@ -1,0 +1,5 @@
+error: The enum lacks an #[error] token
+ --> $DIR/fail-01-need-error-token.rs:4:6
+  |
+4 | enum Token { }
+  |      ^^^^^

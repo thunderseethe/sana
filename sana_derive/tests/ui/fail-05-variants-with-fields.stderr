@@ -1,0 +1,5 @@
+error: Enum variants with fields are not supported
+ --> $DIR/fail-05-variants-with-fields.rs:6:15
+  |
+6 |     WithFields(i32),
+  |               ^^^^^

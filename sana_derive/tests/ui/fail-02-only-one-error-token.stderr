@@ -1,0 +1,5 @@
+error: More than one #[error] token
+ --> $DIR/fail-02-only-one-error-token.rs:9:5
+  |
+9 |     Error2,
+  |     ^^^^^^

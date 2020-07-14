@@ -1,0 +1,5 @@
+error: Ambiguous rule
+ --> $DIR/fail-04-ambiguity.rs:9:5
+  |
+9 |     Token2,
+  |     ^^^^^^

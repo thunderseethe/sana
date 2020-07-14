@@ -1,0 +1,26 @@
+error: Nullable regular expression
+
+  = note: The regular expression should not match the empty string, but it does
+
+ --> $DIR/fail-03-nullable-regex.rs:5:6
+  |
+5 |     #[regex("")]
+  |      ^^^^^^^^^^^
+
+error: Nullable regular expression
+
+  = note: The regular expression should not match the empty string, but it does
+
+ --> $DIR/fail-03-nullable-regex.rs:8:6
+  |
+8 |     #[regex(".*")]
+  |      ^^^^^^^^^^^^^
+
+error: Nullable regular expression
+
+  = note: The regular expression should not match the empty string, but it does
+
+  --> $DIR/fail-03-nullable-regex.rs:11:6
+   |
+11 |     #[token("")]
+   |      ^^^^^^^^^^^

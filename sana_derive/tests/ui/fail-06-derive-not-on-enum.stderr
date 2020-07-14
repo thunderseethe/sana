@@ -1,0 +1,5 @@
+error: Sana can be only be derived for enums: expected `enum`
+ --> $DIR/fail-06-derive-not-on-enum.rs:4:1
+  |
+4 | struct Token { }
+  | ^^^^^^
