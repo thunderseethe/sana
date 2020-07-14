@@ -100,8 +100,6 @@ impl<T: Clone> RuleSet<T> {
             else { return Ok(None) };
 
         let (mut top_ix, mut top_prio) = (ix, self.rules[ix].priority);
-
-
         for i in rule_indices {
             use std::cmp::Ordering::*;
 
@@ -152,8 +150,8 @@ impl<T: Clone> RuleSet<T> {
                     else {
                         let i = stored.len();
                         let state =
-                            match self.top_rule(dvec.nullables()) {
-                                Ok(Some(rule)) => State::Action(rule.action.clone()),
+                            match self.top_rule(dvec.nullables())? {
+                                Some(rule) => State::Action(rule.action.clone()),
                                 _ => State::Normal,
                             };
 

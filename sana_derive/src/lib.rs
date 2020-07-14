@@ -60,6 +60,13 @@ fn join_attrs<T>(attrs: &[Spanned<SanaAttr>], action: T) -> Rule<T> {
         _ => unreachable!()
     };
 
+    if regex.is_nullable() {
+        emit_error!(
+            attrs[0].span, "Nullable regular expression";
+            note = "The regular expression should not match the empty string, but it does"
+        );
+    }
+
     let mut union = vec![];
     for attr in &attrs[1..] {
         let (regex, prio) = match &attrs[0].data {
@@ -69,6 +76,13 @@ fn join_attrs<T>(attrs: &[Spanned<SanaAttr>], action: T) -> Rule<T> {
                 (token.clone(), *priority),
             _ => unreachable!()
         };
+
+        if regex.is_nullable() {
+            emit_error!(
+                attr.span, "Nullable regular expression";
+                note = "The regular expression should not match the empty string, but it does"
+            );
+        }
 
         if priority != prio {
             emit_error!(
