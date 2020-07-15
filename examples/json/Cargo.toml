@@ -1,0 +1,10 @@
+[package]
+name = "json"
+version = "0.0.0"
+authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
+license = "MIT"
+edition = "2018"
+publish = false
+
+[dependencies]
+sana = { path = "../../sana" }

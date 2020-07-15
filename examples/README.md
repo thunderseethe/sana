@@ -6,7 +6,7 @@ the `sana` crate.
 All examples can be executed with:
 
 ```
-cargo run --example $name
+cargo run --package $name
 ```
 
 The list of examples:
