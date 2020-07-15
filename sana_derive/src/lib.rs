@@ -69,7 +69,7 @@ fn join_attrs<T>(attrs: &[Spanned<SanaAttr>], action: T) -> Rule<T> {
 
     let mut union = vec![];
     for attr in &attrs[1..] {
-        let (regex, prio) = match &attrs[0].data {
+        let (regex, prio) = match &attr.data {
             SanaAttr::Regex(RegexAttr { regex, priority }) =>
                 (regex.clone(), *priority),
             SanaAttr::Token(TokenAttr { token, priority }) =>
@@ -167,14 +167,18 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
 ///
 /// ```text
 /// regex =
-///     regex '&' regex
+///     regex '|' regex
+///     / regex '&' regex
+///     / regex '.' regex
 ///     / '!' regex
+///     / '(' regex ')'
 ///     / literal
 /// ```
 ///
 /// Here, `literal` is rust string literal containing regular expression using
-/// the [regex](https://docs.rs/regex) crate syntax. `&` denotes the intersection
-/// of regular expressions while `!` denotes the complement of regular expression.
+/// the [regex](https://docs.rs/regex) crate syntax. `|` denotes the union
+/// of regular expressions, `&` denotes the intersection, and `.` denotes
+/// the concatenation. `!` denotes the complement of a regular expression.
 #[proc_macro_error]
 #[proc_macro_derive(Sana, attributes(error, regex, token))]
 pub fn sana(input: TokenStream) -> TokenStream {
