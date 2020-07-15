@@ -1,16 +1,11 @@
-use proc_macro_error::{emit_error};
+use proc_macro_error::emit_error;
+use syn::{parenthesized, Attribute, Ident, LitInt, Token, LitStr};
+use syn::parse::{Parse, ParseStream, Peek};
 
-use syn::Attribute;
-use syn::Ident;
-use syn::LitInt;
-use syn::{Token, LitStr};
-use syn::parse::ParseStream;
-use syn::parse::Parse;
-use syn::parenthesized;
-use crate::Spanned;
+use std::convert::TryFrom;
 
 use sana_core::regex::Regex;
-use std::convert::TryFrom;
+use crate::Spanned;
 
 struct RegexExpr(Regex);
 
@@ -45,6 +40,62 @@ pub(crate) fn parse_attr(attr: Attribute) -> Option<Spanned<SanaAttr>> {
     })
 }
 
+fn parse_infix<Any, T, Op, F>(
+    input: ParseStream,
+    op: Op,
+    cons: F,
+    higher: fn(ParseStream) -> syn::Result<Regex>
+) -> syn::Result<Regex>
+where
+    T: Parse,
+    Op: Copy + Peek + FnOnce(Any) -> T,
+    F: FnOnce(Vec<Regex>) -> Regex,
+{
+    let head = input.call(higher)?;
+
+    let mut tail = vec![];
+    while input.peek(op) {
+        input.parse::<T>()?;
+
+        let expr = input.call(higher)?;
+        tail.push(expr);
+    }
+
+    if tail.is_empty() {
+        Ok(head)
+    }
+    else {
+        Ok(cons(Some(head).into_iter().chain(tail).collect()))
+    }
+}
+
+fn parse_regex_or(input: ParseStream) -> syn::Result<Regex> {
+    parse_infix(
+        input,
+        Token![|],
+        Regex::Or,
+        parse_regex_and
+    )
+}
+
+fn parse_regex_and(input: ParseStream) -> syn::Result<Regex> {
+    parse_infix(
+        input,
+        Token![&],
+        Regex::And,
+        parse_regex_dot
+    )
+}
+
+fn parse_regex_dot(input: ParseStream) -> syn::Result<Regex> {
+    parse_infix(
+        input,
+        Token![.],
+        Regex::Concat,
+        parse_regex_not
+    )
+}
+
 fn parse_regex_not(input: ParseStream) -> syn::Result<Regex> {
     if input.peek(Token![!]) {
         input.parse::<Token![!]>()?;
@@ -53,6 +104,12 @@ fn parse_regex_not(input: ParseStream) -> syn::Result<Regex> {
         Ok(Regex::Not(Box::new(inner)))
     }
     else {
+        parse_regex_other(input)
+    }
+}
+
+fn parse_regex_other(input: ParseStream) -> syn::Result<Regex> {
+    if input.peek(syn::LitStr) {
         let regex: LitStr = input.parse()?;
         let span = regex.span();
         let hir = regex_syntax::Parser::new()
@@ -63,6 +120,12 @@ fn parse_regex_not(input: ParseStream) -> syn::Result<Regex> {
 
         Ok(regex)
     }
+    else {
+        let content;
+        parenthesized!(content in input);
+
+        parse_regex_or(&content)
+    }
 }
 
 impl Parse for RegexExpr {
@@ -71,22 +134,9 @@ impl Parse for RegexExpr {
             return Err(input.error("Empty regex"))
         }
 
-        let regex = parse_regex_not(input)?;
+        let regex = parse_regex_or(input)?;
 
-        let mut union = vec![];
-        while input.peek(Token![&]) {
-            input.parse::<Token![&]>()?;
-            union.push(parse_regex_not(input)?);
-        }
-
-        if union.is_empty() {
-            Ok(RegexExpr(regex))
-        }
-        else {
-            let regex = Regex::And(Some(regex).into_iter().chain(union).collect());
-
-            Ok(RegexExpr(regex))
-        }
+        Ok(RegexExpr(regex))
     }
 }
 

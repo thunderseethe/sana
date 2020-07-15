@@ -4,7 +4,7 @@ use std::io::Read;
 
 #[derive(Debug, Clone, Copy, PartialEq, Sana)]
 enum Token {
-    #[regex("\"([^\"\\\\]|\\\\[\"\\\\/bfnrt]|\\\\u\\d\\d\\d\\d)*\"")]
+    #[regex("\"" . r#"([^"\\]|\\["\\/bfnrt]|\\u\d\d\d\d)*"# . "\"")]
     String,
     #[regex(r"-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?")]
     Number,
