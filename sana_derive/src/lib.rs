@@ -43,6 +43,30 @@ fn parse_variant(var: syn::Variant) -> Option<SanaVariant> {
     if attrs.is_empty() {
         return None
     }
+
+    if attrs.len() > 1 {
+        let (rules, errors): (Vec<_>, Vec<_>) = attrs.iter()
+            .partition(|attr| attr.data != SanaAttr::Error);
+
+        if rules.len() == attrs.len() {
+            // mixing several rules is fine
+        } else {
+            if errors.len() == attrs.len() {
+                emit_error!(
+                    ident,
+                    "Several #[error] attributes on the same variant";
+                    note = "There should be exactly one #[error] attribute"
+                );
+            } else {
+                emit_error!(
+                    ident,
+                    "Rule attributes on an #[error] variant";
+                    note = "An #[error] variant must not have #[regex(...)] or #[token(...)] attributes"
+                );
+            }
+        }
+    }
+
     if var.fields.is_empty().not() {
         emit_error!(var.fields, "Enum variants with fields are not supported");
         return None

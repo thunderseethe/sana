@@ -1,0 +1,23 @@
+error: Rule attributes on an #[error] variant
+
+  = note: An #[error] variant must not have #[regex(...)] or #[token(...)] attributes
+
+ --> $DIR/fail-07-mix-err-attr.rs:7:5
+  |
+7 |     Mixed,
+  |     ^^^^^
+
+error: More than one #[error] token
+  --> $DIR/fail-07-mix-err-attr.rs:10:5
+   |
+10 |     Error,
+   |     ^^^^^
+
+error: Several #[error] attributes on the same variant
+
+  = note: There should be exactly one #[error] attribute
+
+  --> $DIR/fail-07-mix-err-attr.rs:17:5
+   |
+17 |     Error,
+   |     ^^^^^
