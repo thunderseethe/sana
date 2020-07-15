@@ -116,7 +116,9 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
     for (i, var) in vars.enumerate() {
         if var.attrs.iter().any(|a| a.data == SanaAttr::Error) {
             if terminal.is_some() {
-                emit_error!(var.ident, "More than one #[error] token")
+                emit_error!(var.ident, "More than one #[error] token");
+
+                continue
             }
             else {
                 terminal = Some(var.ident);
