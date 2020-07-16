@@ -1,0 +1,72 @@
+use crate::{lexer, Expr, Number};
+
+grammar<'input>(input: &'input str);
+
+S<R>: sana::Spanned<R> =
+    <l: @L> <rule: R> <r: @R> =>
+        sana::Spanned { value: rule, start: l, end: r };
+
+Comma<T>: Vec<T> = {
+    <v:(<T> ",")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+pub Expr = ExprPlus;
+
+ExprPlus: Expr = {
+    <left: ExprPlus> "+" <right: ExprMul> =>
+        Expr::Plus { left: Box::new(left), right: Box::new(right) },
+    <left: ExprPlus> "-" <right: ExprMul> =>
+        Expr::Minus { left: Box::new(left), right: Box::new(right) },
+    <ExprMul>,
+}
+
+ExprMul: Expr = {
+    <left: ExprMul> "*" <right: ExprOther> =>
+        Expr::Mul { left: Box::new(left), right: Box::new(right) },
+    <left: ExprMul> "/" <right: ExprOther> =>
+        Expr::Div { left: Box::new(left), right: Box::new(right) },
+    <ExprOther>,
+}
+
+ExprOther: Expr = {
+    "-" <ExprOther> =>
+        Expr::UMinus(Box::new(<>)),
+    <name: S<"ident">> "(" <args: Comma<Expr>> ")" => {
+        let name = input[name.start..name.end].to_owned();
+
+        Expr::Call { name, args }
+    },
+    <i: S<"integer">> =>? {
+        let num: i64 = input[i.start..i.end].parse()
+            .map_err(|_| lalrpop_util::ParseError::User { error: ParserError })?;
+
+        Ok(Expr::Number(Number::Integer(num)))
+    },
+}
+
+extern {
+    type Location = usize;
+    type Error = crate::parser::ParserError;
+    
+    enum lexer::Token {
+        "ident" => lexer::Token::Ident,
+        "integer" => lexer::Token::Integer,
+        "float" => lexer::Token::Float,
+
+        "(" => lexer::Token::LParren,
+        ")" => lexer::Token::RParren,
+        "," => lexer::Token::Comma,
+
+        "+" => lexer::Token::Plus,
+        "-" => lexer::Token::Minus,
+        "*" => lexer::Token::Mul,
+        "/" => lexer::Token::Div,
+    }
+}
