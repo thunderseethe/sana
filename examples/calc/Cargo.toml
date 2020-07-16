@@ -6,7 +6,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-sana = { git = "https://github.com/suhr/sana.git" }
+sana = { path = "../../sana" }
 lalrpop-util = "0.19.0"
 rustyline = "6.2.0"
 
