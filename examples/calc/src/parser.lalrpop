@@ -49,6 +49,12 @@ ExprOther: Expr = {
 
         Ok(Expr::Number(Number::Integer(num)))
     },
+    <i: S<"float">> =>? {
+        let num: f64 = input[i.start..i.end].parse()
+            .map_err(|_| lalrpop_util::ParseError::User { error: ParserError })?;
+
+        Ok(Expr::Number(Number::Float(num)))
+    },
 }
 
 extern {
