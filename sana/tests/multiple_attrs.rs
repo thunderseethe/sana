@@ -25,4 +25,6 @@ fn multiple_attrs() {
 
     let tok = lexer.next().unwrap();
     assert_eq!(tok, Spanned{ value: Token::Xy, start: 2, end: 3 });
+
+    assert!(lexer.next().is_none());
 }

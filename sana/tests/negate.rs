@@ -24,4 +24,6 @@ fn token_break() {
 
     let tok = lexer.next().unwrap();
     assert_eq!(tok, Spanned{ value: Token::AnyNotSpace, start: 2, end: 3 });
+
+    assert!(lexer.next().is_none());
 }

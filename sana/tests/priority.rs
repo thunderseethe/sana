@@ -20,6 +20,8 @@ fn priority_first() {
 
     let tok = lexer.next().unwrap();
     assert_eq!(tok, Spanned{ value: AmbigToken::A, start: 0, end: 1 });
+
+    assert!(lexer.next().is_none());
 }
 
 #[test]
@@ -42,4 +44,6 @@ fn priority_last() {
 
     let tok = lexer.next().unwrap();
     assert_eq!(tok, Spanned{ value: AmbigToken::B, start: 0, end: 1 });
+
+    assert!(lexer.next().is_none());
 }
