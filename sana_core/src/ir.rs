@@ -296,39 +296,56 @@ pub enum VmResult<T> {
 }
 
 #[derive(Debug, Clone)]
-pub struct Vm<'code, 'input, T> {
+pub struct Cursor<'input> {
     pub input: &'input str,
-    code: &'code [Op<T>],
+    pub head: Option<char>,
     iter: std::str::Chars<'input>,
-    cursor: Option<char>,
     pos: usize,
 }
 
-impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
-    pub fn new(code: &'code [Op<T>], input: &'input str) -> Self {
+impl<'input> Cursor<'input> {
+    pub fn new(input: &'input str) -> Self {
         let mut iter = input.chars();
-        let cursor = iter.next();
+        let head = iter.next();
         let pos = 0;
 
-        Vm { code, input, iter, cursor, pos }
+        Cursor { input, iter, head, pos }
     }
 
     pub fn position(&self) -> usize {
         self.pos
     }
 
-    fn shift(&mut self) {
-        self.pos += self.cursor
+    pub fn shift(&mut self) {
+        self.pos += self.head
             .map(char::len_utf8)
             .unwrap_or(1);
-        self.cursor = self.iter.next();
+        self.head = self.iter.next();
     }
 
     /// Set the cursor position
     pub fn rewind(&mut self, pos: usize) {
         self.iter = self.input[pos..].chars();
-        self.cursor = self.iter.next();
+        self.head = self.iter.next();
         self.pos = pos;
+    }
+
+    pub fn is_eoi(&self) -> bool {
+        self.head.is_none()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Vm<'code, 'input, T> {
+    pub cursor: Cursor<'input>,
+    code: &'code [Op<T>],
+}
+
+impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
+    pub fn new(code: &'code [Op<T>], input: &'input str) -> Self {
+        let cursor = Cursor::new(input);
+
+        Vm { cursor, code }
     }
 
     /// Execute the loaded code
@@ -337,21 +354,21 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
         let mut jump_ptr = 0;
 
         let mut action = None;
-        let start = self.pos;
+        let start = self.cursor.position();
         let mut end = start;
 
-        if self.cursor.is_none() {
+        if self.cursor.is_eoi() {
             return VmResult::Eoi
         }
 
         loop {
             match &self.code[inst_ptr] {
                 Op::Shift => {
-                    self.shift();
+                    self.cursor.shift();
                 },
                 Op::JumpMatches { from, to, on_success } => {
                     let cursor =
-                        if let Some(ch) = self.cursor { ch }
+                        if let Some(ch) = self.cursor.head { ch }
                         else { break };
 
                     if (*from..=*to).contains(&cursor) {
@@ -364,7 +381,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
                 },
                 Op::JumpNotMatches { from, to, on_failure } => {
                     let cursor =
-                        if let Some(ch) = self.cursor { ch }
+                        if let Some(ch) = self.cursor.head { ch }
                         else { break };
 
                     if (*from..=*to).contains(&cursor).not() {
@@ -376,7 +393,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
                 },
                 Op::LoopMatches { from, to} => {
                     let cursor =
-                        if let Some(ch) = self.cursor { ch }
+                        if let Some(ch) = self.cursor.head { ch }
                         else { break };
 
                     if (*from..=*to).contains(&cursor) {
@@ -393,7 +410,7 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
                 },
                 Op::Set(act) => {
                     action = Some(act.clone());
-                    end = self.pos;
+                    end = self.cursor.position();
                 },
                 Op::Halt => break,
             };
@@ -401,14 +418,14 @@ impl<'code, 'input, T: Clone> Vm<'code, 'input, T> {
             inst_ptr += 1;
         }
 
-        if action.is_none() && self.pos != self.input.len() {
+        if action.is_none() && self.cursor.is_eoi().not() {
             return VmResult::Error {
                 start,
-                end: self.pos,
+                end: self.cursor.position(),
             }
         }
 
-        if end != self.pos { self.rewind(end) }
+        if end != self.cursor.position() { self.cursor.rewind(end) }
 
         match action {
             Some(action) =>
