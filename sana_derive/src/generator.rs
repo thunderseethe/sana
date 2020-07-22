@@ -5,7 +5,7 @@ use proc_macro_error::abort;
 use quote::{format_ident, quote};
 
 use sana_core::ir::{Op, Ir};
-use crate::SanaSpec;
+use crate::{SanaSpec, Backend};
 
 pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
     let dfa = match spec.rules.construct_dfa() {
@@ -21,11 +21,13 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
         .to_shouty_snake_case();
     let ir_var = format_ident!("_{}_IR", enum_const_name);
     let ir_code = generate_ir(&enum_ident, &ir, &spec.variants);
+
+    let lexer_name = format_ident!("_{}_LEXER", enum_const_name);
     let bytecode = analyze_ir(&ir);
-    dbg!(&bytecode);
-    // let rust_code = compile_ir(&ir, &enum_ident, &spec.variants);
-    let rust_code = quote! { sana::ir::VmResult::Eoi };
+    let rust_code = compile_bytecode(bytecode, &enum_ident, &spec.variants);
     let error = spec.terminal;
+
+    let uses_vm = spec.backend == Backend::Vm;
 
     quote! {
         #[doc(hidden)]
@@ -33,12 +35,62 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
 
         impl sana::Sana for #enum_ident {
             const ERROR: Self = #enum_ident::#error;
-            const USES_VM: bool = true;
+            const USES_VM: bool = #uses_vm;
 
             fn ir() -> &'static [sana::ir::Op<Self>] { #ir_code }
             fn lex<'input>(cursor: &mut sana::ir::Cursor<'input>) -> sana::ir::VmResult<Self> {
-                #rust_code
+                let mut lexer = #lexer_name {
+                    action: None,
+                    end: cursor.position()
+                };
+
+                lexer.run(cursor)
             }
+        }
+
+        struct #lexer_name {
+            action: ::core::option::Option<#enum_ident>,
+            end: usize,
+        }
+
+        impl #lexer_name {
+            fn new() -> Self {
+                let action = None;
+                let end = 0;
+                Self { action, end }
+            }
+
+            fn run<'input>(&mut self, cursor: &mut sana::ir::Cursor<'input>) -> sana::ir::VmResult<#enum_ident> {
+                self.action = None;
+
+                if cursor.is_eoi() {
+                    return sana::ir::VmResult::Eoi
+                }
+
+                let start = cursor.position();
+                self.end = start;
+
+                // l0 is the entry point
+                self._l0(cursor);
+
+                if self.action.is_none() && !cursor.is_eoi() {
+                    return sana::ir::VmResult::Error {
+                        start,
+                        end: cursor.position(),
+                    }
+                }
+
+                if self.end != cursor.position() { cursor.rewind(self.end) }
+
+                if let Some(action) = self.action.take() {
+                    sana::ir::VmResult::Action { start, end: self.end, action }
+                } else {
+                    sana::ir::VmResult::Eoi
+                }
+            }
+
+            // The implementation of compile-time lexer
+            #rust_code
         }
     }
 }
@@ -295,4 +347,168 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
 
 
     bytecode
+}
+
+use std::collections::HashSet;
+
+pub fn compile_bytecode(bytecode: Bytecode, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
+    let mut fns: Vec<TokenStream> = vec![];
+
+    // compile only functions
+    for block in bytecode.blocks.iter().filter(|b| b.is_func) {
+        let name = format_ident!("_l{}", block.id);
+
+        let body = func_to_rust(&bytecode, block.id, enum_ident, variants);
+
+        fns.push(quote! {
+            fn #name<'input>(&mut self, cursor: &mut sana::ir::Cursor<'input>) { #body }
+        });
+    }
+
+    quote! {
+        #(#fns)*
+    }
+}
+
+macro_rules! format_lifetime {
+    ($($arg:tt)*) => {{
+        let name = format!($($arg)*);
+
+        syn::Lifetime::new(&name, proc_macro2::Span::call_site())
+    }}
+}
+
+fn func_to_rust(bytecode: &Bytecode, block_id: BlockId, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
+    let block = &bytecode.blocks[block_id];
+    assert_eq!(block.id, block_id);
+
+    let mut call_stack = HashSet::new();
+    call_stack.insert(block.id);
+
+    let code = block.code.iter()
+        .map(|stmt| stmt_to_rust(&mut call_stack, bytecode, stmt, enum_ident, variants))
+        .collect::<Vec::<_>>();
+
+    if block.is_loop {
+        let label = format_lifetime!("'l{}", block.id);
+
+        quote! {
+            #label: loop {
+                #(#code);*;
+
+                break
+            }
+        }
+    }
+    else {
+        quote! {
+            #(#code);*;
+        }
+    }
+}
+
+fn block_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, block_id: BlockId, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
+    let block = &bytecode.blocks[block_id];
+    assert_eq!(block.id, block_id);
+
+    if block.is_loop && call_stack.contains(&block.id) {
+        // we are trying to jump into the beginning of a loop from the middle of a block
+        let label = format_lifetime!("'l{}", block_id);
+        return quote! { continue #label }
+    }
+
+    if block.is_func {
+        // any call to a function inside a block results into a call
+        let func = format_ident!("_l{}", block.id);
+        return quote! { return self.#func(cursor); }
+    }
+
+    if call_stack.contains(&block.id) {
+        panic!("recursion in block {} which is not a function nor a loop. call stack: {:?}", block.id, &call_stack);
+    }
+
+    call_stack.insert(block.id);
+
+    let code = block.code.iter()
+        .map(|stmt| stmt_to_rust(call_stack, bytecode, stmt, enum_ident, variants))
+        .collect::<Vec::<_>>();
+
+    call_stack.remove(&block.id);
+
+    if block.is_loop {
+        let label = format_lifetime!("'l{}", block.id);
+
+        quote! {
+            #label: loop {
+                #(#code);*;
+
+                break
+            }
+        }
+    }
+    else {
+        quote! {
+            #(#code);*;
+        }
+    }
+}
+
+fn match_arm_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, arm: &MatchArm, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
+    let ranges = arm.ranges.iter()
+        .map(|(from, to)| quote! { #from ..= #to });
+    let block = block_to_rust(call_stack, bytecode, arm.block, enum_ident, variants);
+
+    quote! {
+        #(#ranges)|* => { #block }
+    }
+}
+
+fn stmt_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, stmt: &Stmt, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
+    match stmt {
+        Stmt::Set(act) => {
+            let var = &variants[*act];
+            quote! {
+                self.action = Some(#enum_ident::#var);
+                self.end = cursor.position();
+            }
+        },
+        Stmt::Shift => {
+            quote! { cursor.shift() }
+        },
+        Stmt::Match(Match { arms }) => {
+            let arms = arms.into_iter()
+                .map(|arm| match_arm_to_rust(call_stack, bytecode, arm, enum_ident, variants))
+                .collect::<Vec::<_>>();
+
+            quote! {
+                let ch = match cursor.head {
+                    Some(ch) => ch,
+                    None => return,
+                };
+
+                match ch {
+                    #(#arms),*,
+                    _ => (),
+                }
+            }
+        },
+        Stmt::If { range, block } => {
+            let (from, to) = range;
+            let block = block_to_rust(call_stack, bytecode, *block, enum_ident, variants);
+
+            quote! {
+                let ch = match cursor.head {
+                    Some(ch) => ch,
+                    None => return,
+                };
+
+                if ch >= #from && ch <= #to { #block }
+            }
+        },
+        Stmt::Jump(block_id) => {
+            block_to_rust(call_stack, bytecode, *block_id, enum_ident, variants)
+        },
+        Stmt::Halt =>
+            quote! { return },
+    }
 }
