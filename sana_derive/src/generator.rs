@@ -502,7 +502,7 @@ fn stmt_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, stmt: &S
                     None => return,
                 };
 
-                if ch >= #from && ch <= #to { #block }
+                if !(#from..=#to).contains(&ch) { #block }
             }
         },
         Stmt::Jump(block_id) => {
