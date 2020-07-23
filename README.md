@@ -9,7 +9,7 @@ At compile time, Sana:
 
 - Constructs an deterministic state automata from the token definitions
 - Generates IR from the automata
-- (TODO) Compiles IR into Rust code
+- Compiles IR into Rust code
 
 For an overview of the Sana architecture, see [DESIGN.md](./DESIGN.md).
 
@@ -19,6 +19,7 @@ For an overview of the Sana architecture, see [DESIGN.md](./DESIGN.md).
 use sana::{Sana, Spanned};
 
 #[derive(Debug, Clone, Copy, PartialEq, Sana)]
+#[backend(rust)] // optional. can be either rust or vm. default is rust
 enum Token {
     #[regex("[a-zA-Z_][a-zA-Z0-9_]*")]
     Ident,
