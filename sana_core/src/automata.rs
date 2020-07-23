@@ -122,9 +122,9 @@ impl<T> Automata<T> {
     /// corresponding states in the automata
     pub fn node_kinds(&self) -> Vec<NodeKind> {
         let terminal = self.find_terminal_node();
-        let mut coedges = BTreeMap::new();
+        let mut coedges = Vec::new();
         for (&(start, range), &end) in self.edges.iter() {
-            coedges.insert((end, range), start);
+            coedges.push((end, range, start));
         }
 
         let mut kinds = vec![NodeKind::Fork; self.states.len()];
@@ -136,8 +136,8 @@ impl<T> Automata<T> {
 
             let far_edges = self.transitions_from(i)
                 .filter(|&(_, end)| end != terminal);
-            let far_coedges = coedges.range(state_range(i))
-                .filter(|(&(end, _), &start)| start != i && end != terminal);
+            let far_coedges = coedges.iter()
+                .filter(|(end, _, start)| *end == i && *start != i);
 
             if far_coedges.count() > 1 {
                 *kind = NodeKind::Sink
