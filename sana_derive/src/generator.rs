@@ -169,7 +169,8 @@ enum Stmt {
     Shift,
     /// A set of guards to jump to a guard's suitable block
     Match(Match),
-    If {
+    /// jump to the block if the head does not match the given range
+    JumpNotMatches {
         range: (char, char),
         block: BlockId,
     },
@@ -263,7 +264,7 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
                             // dump match acc
                             code.push(Stmt::Match(match_acc))
                         }
-                        code.push(Stmt::If { range: (*from, *to), block: *on_failure });
+                        code.push(Stmt::JumpNotMatches { range: (*from, *to), block: *on_failure });
                     },
                     Op::Jump(id) => {
                         if let Some(match_acc) = match_acc.take() {
@@ -492,7 +493,7 @@ fn stmt_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, stmt: &S
                 }
             }
         },
-        Stmt::If { range, block } => {
+        Stmt::JumpNotMatches { range, block } => {
             let (from, to) = range;
             let block = block_to_rust(call_stack, bytecode, *block, enum_ident, variants);
 
