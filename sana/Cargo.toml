@@ -9,6 +9,13 @@ categories = ["parsing", "text-processing"]
 readme = "../README.md"
 edition = "2018"
 
+[[bench]]
+name = "bench"
+harness = false
+
 [dependencies]
 sana_core = { path = "../sana_core" }
 sana_derive = { path = "../sana_derive" }
+
+[dev-dependencies]
+criterion = "0.3"
