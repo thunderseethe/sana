@@ -25,6 +25,12 @@ struct SanaVariant {
     attrs: Vec<Spanned<SanaAttr>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Backend {
+    Vm,
+    Rust,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct SanaSpec {
@@ -32,6 +38,7 @@ struct SanaSpec {
     rules: RuleSet<usize>,
     variants: Vec<Ident>,
     terminal: Ident,
+    backend: Backend,
 }
 
 fn parse_variant(var: syn::Variant) -> Option<SanaVariant> {
@@ -130,6 +137,13 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
         abort!(source.generics, "Generics are not supported")
     }
 
+    let mut backend = Backend::Rust;
+    for attr in source.attrs {
+        if let Some(b) = parser::parse_backend_attr(attr) {
+            backend = b
+        }
+    }
+
     let enum_ident = source.ident;
     let mut rules = vec![];
     let mut variants = vec![];
@@ -168,6 +182,7 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
         rules: RuleSet { rules },
         variants,
         terminal: terminal.unwrap(),
+        backend
     }
 }
 
@@ -204,7 +219,7 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
 /// of regular expressions, `&` denotes the intersection, and `.` denotes
 /// the concatenation. `!` denotes the complement of a regular expression.
 #[proc_macro_error]
-#[proc_macro_derive(Sana, attributes(error, regex, token))]
+#[proc_macro_derive(Sana, attributes(backend, error, regex, token))]
 pub fn sana(input: TokenStream) -> TokenStream {
     let item: ItemEnum = syn::parse(input)
         .expect_or_abort("Sana can be only be derived for enums");

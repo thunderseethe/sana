@@ -9,6 +9,34 @@ use crate::Spanned;
 
 struct RegexExpr(Regex);
 
+pub(crate) fn parse_backend_attr(attr: Attribute) -> Option<crate::Backend> {
+    let name = attr.path.get_ident()?.to_string();
+    if &*name != "backend" { return None }
+
+    let ba: BackendAttr = syn::parse2(attr.tokens)
+        .map_err(|e| emit_error!(e))
+        .ok()?;
+
+    Some(ba.0)
+}
+
+struct BackendAttr(crate::Backend);
+
+impl Parse for BackendAttr {
+    fn parse(input: ParseStream) -> syn::Result<Self> {
+        let content;
+        parenthesized!(content in input);
+
+        let backend: Ident = content.parse()?;
+
+        match &*backend.to_string() {
+            "vm" => Ok(BackendAttr(crate::Backend::Vm)),
+            "rust" => Ok(BackendAttr(crate::Backend::Rust)),
+            _ => Err(input.error("Invalid backend"))
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum SanaAttr {
     Regex(RegexAttr),
