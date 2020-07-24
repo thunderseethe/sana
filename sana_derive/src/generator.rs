@@ -10,8 +10,9 @@ use crate::{SanaSpec, Backend};
 pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
     let dfa = match spec.rules.construct_dfa() {
         Ok(dfa) => dfa,
-        Err(sana_core::Error::AmbiguityError(_, i)) =>
-            abort!(spec.variants[i], "Ambiguous rule"),
+        Err(sana_core::Error::AmbiguityError(ix, i)) =>
+            abort!(spec.variants[i].span(), "Ambiguous rule";
+            note = spec.variants[ix].span() => "Resolve conflicts with {}", spec.variants[ix]),
     };
 
     let ir = Ir::from_automata(dfa);

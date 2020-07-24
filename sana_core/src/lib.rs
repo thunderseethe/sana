@@ -92,7 +92,7 @@ impl<T: Clone> RuleSet<T> {
     /// From all rules with index i ∈ rule_indices, return the rule
     /// with the higherst priority
     ///
-    /// If there are more than one such rules, return the ambuguity error
+    /// If there are more than one such rules, return the ambiguity error
     fn top_rule<I>(&self, mut rule_indices: I) -> Result<Option<&Rule<T>>, Error>
     where I: Iterator<Item=usize> {
         let ix =

@@ -1,4 +1,7 @@
 error: Ambiguous rule
+
+  = note: Resolve conflicts with Token1
+
  --> $DIR/fail-04-ambiguity.rs:9:5
   |
 9 |     Token2,
