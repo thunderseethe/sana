@@ -333,10 +333,9 @@ fn optimize_match(match_stmt: &mut Match) {
 
         // group by block
         let mut new_arms: Vec<MatchArm> = vec![];
-        let mut current_block = arms[0].block;
         for arm in arms.iter() {
             match new_arms.last_mut() {
-                Some(new_arm) if new_arm.block == current_block => {
+                Some(new_arm) if new_arm.block == arm.block => {
                     match &mut new_arm.ranges {
                         cond @ Cond::Ranges(_) =>
                             cond.merge(&arm.ranges),
@@ -346,12 +345,10 @@ fn optimize_match(match_stmt: &mut Match) {
                 _ => {
                     let match_arm = MatchArm {
                         ranges: arm.ranges.clone(),
-                        block: current_block,
+                        block: arm.block,
                     };
 
                     new_arms.push(match_arm);
-
-                    current_block = arm.block
                 },
             }
         }
