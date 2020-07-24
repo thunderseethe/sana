@@ -186,10 +186,26 @@ struct Match {
     arms: Vec<MatchArm>
 }
 
+#[derive(Debug, Clone, PartialEq)]
+enum Cond {
+    Ranges(Vec<(char, char)>),
+    Anything,
+}
+
+impl Cond {
+    fn merge(&mut self, other: &Cond) {
+        match (self, other) {
+            (Cond::Ranges(rx), Cond::Ranges(ry)) =>
+                rx.extend(ry),
+            _ => (),
+        }
+    }
+}
+
 /// Jump if matches
 #[derive(Debug, Clone)]
 struct MatchArm {
-    ranges: Vec<(char, char)>,
+    ranges: Cond,
     block: BlockId,
 }
 
@@ -233,7 +249,7 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
                     },
                     Op::JumpMatches { from, to, on_success } => {
                         let match_arm = MatchArm {
-                            ranges: vec![(*from, *to)],
+                            ranges: Cond::Ranges(vec![(*from, *to)]),
                             block: *on_success
                         };
                         if let Some(match_acc) = match_acc.as_mut() {
@@ -248,7 +264,7 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
                         is_loop = true;
 
                         let match_arm = MatchArm {
-                            ranges: vec![(*from, *to)],
+                            ranges: Cond::Ranges(vec![(*from, *to)]),
                             block: id // self block id
                         };
                         if let Some(match_acc) = match_acc.as_mut() {
@@ -295,59 +311,53 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
         })
         .collect();
 
-    // Optimize matches
-    // Group arms by block id
     for block in blocks.iter_mut() {
         for op in block.code.iter_mut() {
             match op {
-                Stmt::Match(match_stmt) => {
-                    if !match_stmt.arms.is_empty() {
-                        let mut arms = match_stmt.arms.clone();
+                Stmt::Match(match_stmt) =>
+                    optimize_match(match_stmt),
+                _ => (),
+            }
+        }
+    }
 
-                        // sort by block
-                        arms.sort_by(|l, r| l.block.cmp(&r.block).reverse());
+    Bytecode { blocks }
+}
 
-                        // group by block
-                        let mut new_arms = vec![];
-                        let mut current_block = arms[0].block;
-                        let mut ranges = vec![];
-                        for arm in arms.iter() {
-                            if arm.block != current_block {
-                                let match_arm = MatchArm {
-                                    ranges: ranges.clone(),
-                                    block: current_block,
-                                };
-                                new_arms.push(match_arm);
+fn optimize_match(match_stmt: &mut Match) {
+    if !match_stmt.arms.is_empty() {
+        let mut arms = match_stmt.arms.clone();
 
-                                ranges.clear();
-                                current_block = arm.block;
-                            }
-                            ranges.extend(&arm.ranges);
-                        }
-                        if !ranges.is_empty() {
-                            // dump the last arm
-                            let match_arm = MatchArm {
-                                ranges: ranges,
-                                block: current_block,
-                            };
-                            new_arms.push(match_arm);
-                        }
+        // sort by block
+        arms.sort_by(|l, r| l.block.cmp(&r.block).reverse());
 
-                        match_stmt.arms = new_arms;
+        // group by block
+        let mut new_arms: Vec<MatchArm> = vec![];
+        let mut current_block = arms[0].block;
+        for arm in arms.iter() {
+            match new_arms.last_mut() {
+                Some(new_arm) if new_arm.block == current_block => {
+                    match &mut new_arm.ranges {
+                        cond @ Cond::Ranges(_) =>
+                            cond.merge(&arm.ranges),
+                        _ => (),
                     }
                 }
                 _ => {
-                    // ignore all other statements
+                    let match_arm = MatchArm {
+                        ranges: arm.ranges.clone(),
+                        block: current_block,
+                    };
+
+                    new_arms.push(match_arm);
+
+                    current_block = arm.block
                 },
             }
         }
 
+        match_stmt.arms = new_arms;
     }
-
-    let bytecode = Bytecode { blocks };
-
-
-    bytecode
 }
 
 use std::collections::HashSet;
@@ -455,12 +465,20 @@ fn block_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, block_i
 }
 
 fn match_arm_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, arm: &MatchArm, enum_ident: &Ident, variants: &[Ident]) -> TokenStream {
-    let ranges = arm.ranges.iter()
-        .map(|(from, to)| quote! { #from ..= #to });
+    let cond = match &arm.ranges {
+        Cond::Ranges(ranges) => {
+            let ranges = ranges.iter()
+                .map(|(from, to)| quote! { #from ..= #to });
+
+            quote! { #(#ranges)|* }
+        },
+        Cond::Anything =>
+            quote! { _ }
+    };
     let block = block_to_rust(call_stack, bytecode, arm.block, enum_ident, variants);
 
     quote! {
-        #(#ranges)|* => { #block }
+        #cond => { #block }
     }
 }
 
