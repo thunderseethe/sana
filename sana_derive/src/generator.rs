@@ -305,7 +305,7 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
                         let mut arms = match_stmt.arms.clone();
 
                         // sort by block
-                        arms.sort_by(|l, r| l.block.cmp(&r.block));
+                        arms.sort_by(|l, r| l.block.cmp(&r.block).reverse());
 
                         // group by block
                         let mut new_arms = vec![];
