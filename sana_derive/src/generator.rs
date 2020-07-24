@@ -353,6 +353,12 @@ fn optimize_match(match_stmt: &mut Match) {
             }
         }
 
+        for arm in new_arms.iter_mut() {
+            if arm.block == 1 {
+                arm.ranges = Cond::Anything
+            }
+        }
+
         match_stmt.arms = new_arms;
     }
 }
