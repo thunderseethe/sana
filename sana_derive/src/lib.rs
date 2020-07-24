@@ -159,6 +159,7 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
                 continue
             }
             else {
+                variants.push(var.ident.clone());
                 terminal = Some(var.ident);
 
                 continue
