@@ -122,37 +122,29 @@ impl<T> Automata<T> {
     /// corresponding states in the automata
     pub fn node_kinds(&self) -> Vec<NodeKind> {
         let terminal = self.find_terminal_node();
-        let mut coedges = Vec::new();
-        for (&(start, range), &end) in self.edges.iter() {
-            coedges.push((end, range, start));
-        }
+        let coedges = self.edges.iter().map(|(&(start, range), &end)| (end, range, start));
 
-        let mut kinds = vec![NodeKind::Fork; self.states.len()];
-        for (i, kind) in kinds.iter_mut().enumerate() {
+        (0..self.states.len()).map(|i| {
             if i == terminal {
-                *kind = NodeKind::Terminal;
-                continue
+                return NodeKind::Terminal;
             }
 
             let far_edges = self.transitions_from(i)
                 .filter(|&(_, end)| end != terminal);
-            let far_coedges = coedges.iter()
+            let far_coedges = coedges.clone()
                 .filter(|(end, _, start)| *end == i && *start != i);
 
             if far_coedges.count() > 1 {
-                *kind = NodeKind::Sink
+                NodeKind::Sink
             }
             else {
                 match far_edges.count() {
-                    0 =>
-                        *kind = NodeKind::Leaf,
-                    1 =>
-                        *kind = NodeKind::Link,
-                    _ => (),
+                    0 => NodeKind::Leaf,
+                    1 => NodeKind::Link,
+                    _ => NodeKind::Fork,
                 }
             }
-        }
-
-        kinds
+        })
+        .collect()
     }
 }
