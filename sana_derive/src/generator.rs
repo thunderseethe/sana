@@ -300,55 +300,47 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
     // Group arms by block id
     for block in blocks.iter_mut() {
         for op in block.code.iter_mut() {
-            match op {
-                Stmt::Match(match_stmt) => {
-                    if !match_stmt.arms.is_empty() {
-                        let mut arms = match_stmt.arms.clone();
+            if let Stmt::Match(match_stmt) = op {
+                if !match_stmt.arms.is_empty() {
+                    let mut arms = match_stmt.arms.clone();
 
-                        // sort by block
-                        arms.sort_by(|l, r| l.block.cmp(&r.block));
+                    // sort by block
+                    arms.sort_by(|l, r| l.block.cmp(&r.block));
 
-                        // group by block
-                        let mut new_arms = vec![];
-                        let mut current_block = arms[0].block;
-                        let mut ranges = vec![];
-                        for arm in arms.iter() {
-                            if arm.block != current_block {
-                                let match_arm = MatchArm {
-                                    ranges: ranges.clone(),
-                                    block: current_block,
-                                };
-                                new_arms.push(match_arm);
-
-                                ranges.clear();
-                                current_block = arm.block;
-                            }
-                            ranges.extend(&arm.ranges);
-                        }
-                        if !ranges.is_empty() {
-                            // dump the last arm
+                    // group by block
+                    let mut new_arms = vec![];
+                    let mut current_block = arms[0].block;
+                    let mut ranges = vec![];
+                    for arm in arms.iter() {
+                        if arm.block != current_block {
+                            let ranges = std::mem::replace(&mut ranges, vec![]);
                             let match_arm = MatchArm {
-                                ranges: ranges,
+                                ranges,
                                 block: current_block,
                             };
                             new_arms.push(match_arm);
-                        }
 
-                        match_stmt.arms = new_arms;
+                            current_block = arm.block;
+                        }
+                        ranges.extend(&arm.ranges);
                     }
+                    if !ranges.is_empty() {
+                        // dump the last arm
+                        let match_arm = MatchArm {
+                            ranges,
+                            block: current_block,
+                        };
+                        new_arms.push(match_arm);
+                    }
+
+                    match_stmt.arms = new_arms;
                 }
-                _ => {
-                    // ignore all other statements
-                },
             }
         }
 
     }
 
-    let bytecode = Bytecode { blocks };
-
-
-    bytecode
+    Bytecode { blocks }
 }
 
 use std::collections::HashSet;
@@ -363,6 +355,7 @@ pub fn compile_bytecode(bytecode: Bytecode, enum_ident: &Ident, variants: &[Iden
         let body = func_to_rust(&bytecode, block.id, enum_ident, variants);
 
         fns.push(quote! {
+            #[allow(clippy::needless_return)]
             fn #name<'input>(&mut self, cursor: &mut sana::ir::Cursor<'input>) { #body }
         });
     }
@@ -478,7 +471,7 @@ fn stmt_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, stmt: &S
             quote! { cursor.shift() }
         },
         Stmt::Match(Match { arms }) => {
-            let arms = arms.into_iter()
+            let arms = arms.iter()
                 .map(|arm| match_arm_to_rust(call_stack, bytecode, arm, enum_ident, variants))
                 .collect::<Vec::<_>>();
 

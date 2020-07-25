@@ -57,20 +57,18 @@ fn parse_variant(var: syn::Variant) -> Option<SanaVariant> {
 
         if rules.len() == attrs.len() {
             // mixing several rules is fine
+        } else if errors.len() == attrs.len() {
+            emit_error!(
+                ident,
+                "Several #[error] attributes on the same variant";
+                note = "There should be exactly one #[error] attribute"
+            );
         } else {
-            if errors.len() == attrs.len() {
-                emit_error!(
-                    ident,
-                    "Several #[error] attributes on the same variant";
-                    note = "There should be exactly one #[error] attribute"
-                );
-            } else {
-                emit_error!(
-                    ident,
-                    "Rule attributes on an #[error] variant";
-                    note = "An #[error] variant must not have #[regex(...)] or #[token(...)] attributes"
-                );
-            }
+            emit_error!(
+                ident,
+                "Rule attributes on an #[error] variant";
+                note = "An #[error] variant must not have #[regex(...)] or #[token(...)] attributes"
+            );
         }
     }
 

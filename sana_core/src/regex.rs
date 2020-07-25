@@ -562,7 +562,7 @@ impl ClassSet {
             }
 
             if set.len() > 64 {
-                set.sort_by(|l, r| hash(l).cmp(&hash(r)));
+                set.sort_by_key(|l| hash(l));
                 set.dedup()
             }
         }
