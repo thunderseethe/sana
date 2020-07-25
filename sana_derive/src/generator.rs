@@ -373,12 +373,16 @@ fn func_to_rust(bytecode: &Bytecode, block_id: BlockId, enum_ident: &Ident, vari
 
     if block.is_loop {
         let label = format_lifetime!("'l{}", block.id);
+        let break_op = match block.code.last() {
+            Some(Stmt::Halt) => quote!{ },
+            _ => quote!{ break },
+        };
 
         quote! {
             #label: loop {
                 #(#code);*;
 
-                break
+                #break_op
             }
         }
     }
@@ -419,12 +423,16 @@ fn block_to_rust(call_stack: &mut HashSet<BlockId>, bytecode: &Bytecode, block_i
 
     if block.is_loop {
         let label = format_lifetime!("'l{}", block.id);
+        let break_op = match block.code.last() {
+            Some(Stmt::Halt) => quote!{ },
+            _ => quote!{ break },
+        };
 
         quote! {
             #label: loop {
                 #(#code);*;
 
-                break
+                #break_op
             }
         }
     }
