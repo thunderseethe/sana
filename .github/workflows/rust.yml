@@ -20,3 +20,25 @@ jobs:
       run: cargo test --verbose
     - name: Clippy
       run: cargo clippy
+
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/download-artifact@v2
+      name: Download baseline
+      continue-on-error: true
+      with:
+        name: master-baseline
+        path: sana/target/criterion
+    - name: Run benchmarks
+      continue-on-error: true
+      run: cd sana && cargo bench -- --noplot --load-baseline new --baseline master
+    - name: Save baseline
+      if: ${{ github.ref == 'master' }}
+      run: cargo bench -- --noplot --save-baseline master
+    - uses: actions/upload-artifact@v2
+      if: ${{ github.ref == 'master' }}
+      with:
+        name: master-baseline
+        path: sana/target/criterion

@@ -9,6 +9,9 @@ categories = ["parsing", "text-processing"]
 readme = "../README.md"
 edition = "2018"
 
+[lib]
+bench = false
+
 [dependencies]
 fnv = "1.0.3"
 regex-syntax = "0.6"
