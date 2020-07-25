@@ -244,7 +244,10 @@ impl<T: Clone> Ir<T> {
                     blocks[block_ix].push(Op::Halt)
                 },
                 NodeKind::Terminal =>
-                    blocks[block_ix].push(Op::Halt),
+                    match blocks[block_ix].ops().last() {
+                        Some(Op::Halt) => (),
+                        _ => blocks[block_ix].push(Op::Halt),
+                    }
             }
         }
 
