@@ -38,13 +38,9 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
             const ERROR: Self = #enum_ident::#error;
             const USES_VM: bool = #uses_vm;
 
-            fn ir() -> &'static [sana::ir::Op<Self>] { #ir_code }
+            fn ir() -> &'static [sana::ir::Op<Self>] { #ir_var }
             fn lex<'input>(cursor: &mut sana::ir::Cursor<'input>) -> sana::ir::VmResult<Self> {
-                let mut lexer = #lexer_name {
-                    action: None,
-                    end: cursor.position()
-                };
-
+                let mut lexer = #lexer_name::new();
                 lexer.run(cursor)
             }
         }
@@ -69,7 +65,6 @@ pub(crate) fn generate(spec: SanaSpec) -> TokenStream {
                 }
 
                 let start = cursor.position();
-                self.end = start;
 
                 // l0 is the entry point
                 self._l0(cursor);
