@@ -36,7 +36,7 @@ jobs:
       run: cd sana && cargo bench -- --noplot --load-baseline new --baseline master
     - name: Save baseline
       if: ${{ github.ref == 'refs/heads/master' }}
-      run: cargo bench -- --noplot --save-baseline master
+      run: cd sana && cargo bench -- --noplot --save-baseline master
     - uses: actions/upload-artifact@v2
       if: ${{ github.ref == 'refs/heads/master' }}
       with:
