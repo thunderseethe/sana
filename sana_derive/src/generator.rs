@@ -296,51 +296,43 @@ fn analyze_ir(ir: &Ir<usize>) -> Bytecode {
         })
         .collect();
 
-    // Optimize matches
-    // Group arms by block id
     for block in blocks.iter_mut() {
         for op in block.code.iter_mut() {
             if let Stmt::Match(match_stmt) = op {
-                if !match_stmt.arms.is_empty() {
-                    let mut arms = match_stmt.arms.clone();
-
-                    // sort by block
-                    arms.sort_by(|l, r| l.block.cmp(&r.block));
-
-                    // group by block
-                    let mut new_arms = vec![];
-                    let mut current_block = arms[0].block;
-                    let mut ranges = vec![];
-                    for arm in arms.iter() {
-                        if arm.block != current_block {
-                            let ranges = std::mem::replace(&mut ranges, vec![]);
-                            let match_arm = MatchArm {
-                                ranges,
-                                block: current_block,
-                            };
-                            new_arms.push(match_arm);
-
-                            current_block = arm.block;
-                        }
-                        ranges.extend(&arm.ranges);
-                    }
-                    if !ranges.is_empty() {
-                        // dump the last arm
-                        let match_arm = MatchArm {
-                            ranges,
-                            block: current_block,
-                        };
-                        new_arms.push(match_arm);
-                    }
-
-                    match_stmt.arms = new_arms;
-                }
+                optimize_match(match_stmt);
             }
         }
-
     }
 
     Bytecode { blocks }
+}
+
+fn optimize_match(match_stmt: &mut Match) {
+    if !match_stmt.arms.is_empty() {
+        let mut arms = match_stmt.arms.clone();
+
+        // sort by block
+        arms.sort_by(|l, r| l.block.cmp(&r.block));
+
+        // group by block
+        let mut new_arms: Vec<MatchArm> = vec![];
+        for arm in arms.iter() {
+            match new_arms.last_mut() {
+                Some(new_arm) if new_arm.block == arm.block => {
+                    new_arm.ranges.extend(&arm.ranges);
+                }
+                _ => {
+                    let match_arm = MatchArm {
+                        ranges: arm.ranges.clone(),
+                        block: arm.block,
+                    };
+                    new_arms.push(match_arm);
+                },
+            }
+        }
+
+        match_stmt.arms = new_arms;
+    }
 }
 
 use std::collections::HashSet;
