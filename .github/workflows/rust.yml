@@ -35,10 +35,10 @@ jobs:
       continue-on-error: true
       run: cd sana && cargo bench -- --noplot --load-baseline new --baseline master
     - name: Save baseline
-      if: ${{ github.ref == 'master' }}
+      if: ${{ github.ref == 'refs/heads/master' }}
       run: cargo bench -- --noplot --save-baseline master
     - uses: actions/upload-artifact@v2
-      if: ${{ github.ref == 'master' }}
+      if: ${{ github.ref == 'refs/heads/master' }}
       with:
         name: master-baseline
         path: sana/target/criterion
