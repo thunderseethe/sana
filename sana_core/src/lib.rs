@@ -139,6 +139,8 @@ impl<T: Clone> RuleSet<T> {
         queue.push_back(vector.clone());
         stored.insert(vector, 0);
 
+        let mut current_ranges = vec![];
+
         while let Some(vec) = queue.pop_front() {
             let from = *stored.get(&vec).unwrap();
             let set = vec.class_set();
@@ -163,11 +165,30 @@ impl<T: Clone> RuleSet<T> {
                         i
                     };
 
-                for range in class.ranges() {
-                    automata.insert_edge(from, to, range)
-                }
+                current_ranges.extend(class.ranges().map(|r| (from, to, r)));
             }
 
+            current_ranges.sort();
+
+            let mut current = None;
+            for (from, to, range) in current_ranges.drain(..) {
+                match &mut current {
+                    Some((f, t, r)) => {
+                        match range.concat(*r) {
+                            Some(conc) if *f == from && *t == to =>
+                                *r = conc,
+                            _ => {
+                                automata.insert_edge(*f, *t, *r);
+                                current = Some((from, to, range))
+                            }
+                        }
+                    },
+                    _ => current = Some((from, to, range)),
+                }
+            }
+            if let Some((from, to, range)) = current {
+                automata.insert_edge(from, to, range)
+            }
         }
 
         Ok(automata)

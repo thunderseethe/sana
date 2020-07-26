@@ -46,6 +46,23 @@ impl CharRange {
     fn contains(self, ch: char) -> bool {
         ch >= self.start && ch <= self.end
     }
+
+    /// Concatenate char ranges
+    pub(crate) fn concat(self, other: CharRange) -> Option<CharRange> {
+        use core::cmp::{max, min};
+
+        let (intersect_start, intersect_end) = (
+            max(self.start as u32, other.start as u32),
+            min(self.end as u32, other.end as u32).saturating_add(1)
+        );
+
+        if intersect_start > intersect_end { return None }
+
+        Some(CharRange {
+            start: min(self.start, other.start),
+            end: max(self.end, other.end),
+        })
+    }
 }
 
 fn state_range(state: usize) -> RangeInclusive<(usize, CharRange)> {
