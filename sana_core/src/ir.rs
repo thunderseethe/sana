@@ -1,6 +1,6 @@
 use std::{ops::Not, collections::VecDeque};
 
-use crate::automata::{Automata, NodeKind, State};
+use crate::automata::{Automata, NodeKind, State, CharRange};
 
 /// An intermediate representation
 pub struct Ir<T> {
@@ -101,7 +101,7 @@ fn pprint_op<T: std::fmt::Debug>(op: &Op<T>) {
 
 impl<T: Clone> Ir<T> {
     /// Create IR from DFA
-    pub fn from_automata(automata: Automata<T>) -> Ir<T> {
+    pub fn from_automata(automata: Automata<T, CharRange>) -> Ir<T> {
         let terminal = automata.find_terminal_node();
         let node_kinds = automata.node_kinds();
 

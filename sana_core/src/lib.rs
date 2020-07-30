@@ -9,7 +9,7 @@
 //! If you just want generate a lexer, use the main crate (`sana`) instead.
 
 use regex::{Regex, Derivative, RegexVector};
-use automata::{State, Automata};
+use automata::{State, Automata, CharRange};
 use std::collections::{HashMap, VecDeque};
 
 pub mod regex;
@@ -37,9 +37,9 @@ pub struct Rule<T> {
     pub action: T,
 }
 
-impl<T: Clone> Rule<T> {
+impl<S: Clone> Rule<S> {
     /// Construct DFA using regular expression derivatives
-    pub fn construct_dfa(&self) -> Automata<T> {
+    pub fn construct_dfa(&self) -> Automata<S, CharRange> {
         let state =
             if self.regex.is_nullable() { State::Action(self.action.clone()) }
             else { State::Normal };
@@ -122,7 +122,7 @@ impl<T: Clone> RuleSet<T> {
     ///
     /// If there's more than one rule with the same priority that matches
     /// the same input, then an ambiguity error is returned
-    pub fn construct_dfa(&self) -> Result<Automata<T>, Error> {
+    pub fn construct_dfa(&self) -> Result<Automata<T, CharRange>, Error> {
         let vector = RegexVector {
             exprs: self.rules.iter().map(|r| r.regex.clone()).collect()
         };

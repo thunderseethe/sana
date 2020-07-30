@@ -1,5 +1,5 @@
 use sana_core::regex::Regex;
-use sana_core::automata::{Automata, State};
+use sana_core::automata::{Automata, State, CharRange};
 use sana_core::Rule;
 
 use std::convert::TryFrom;
@@ -33,7 +33,7 @@ fn basic() {
     }
 }
 
-fn dfa_match<T>(dfa: &Automata<T>, input: &str) -> bool {
+fn dfa_match<S>(dfa: &Automata<S, CharRange>, input: &str) -> bool {
     let mut state_ix = 0;
     for ch in input.chars() {
         if let Some(s) = dfa.transite(state_ix, ch) {

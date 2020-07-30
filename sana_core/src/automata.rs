@@ -7,11 +7,49 @@ pub enum State<T> {
     Action(T),
 }
 
+pub trait SymbolRange: Copy + Eq + Ord {
+    type Symbol: Copy + Eq + Ord;
+
+    const MIN: Self;
+    const MAX: Self;
+
+    fn contains(self, sym: Self::Symbol) -> bool;
+    fn start(self) -> Self::Symbol;
+    fn end(self) -> Self::Symbol;
+    fn full_range() -> Self;
+    fn is_full_range(self) -> bool {
+        self == Self::full_range()
+    }
+}
+
 /// Inclusive char range
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CharRange {
     pub start: char,
     pub end: char,
+}
+
+impl SymbolRange for CharRange {
+    type Symbol = char;
+
+    const MIN: Self = CharRange { start: '\0', end: '\0' };
+    const MAX: Self = CharRange { start: std::char::MAX, end: std::char::MAX };
+
+    fn contains(self, ch: char) -> bool {
+        ch >= self.start && ch <= self.end
+    }
+    fn start(self) -> char { self.start }
+    fn end(self) -> char { self.end }
+    fn full_range() -> Self {
+        CharRange { start: '\0', end: std::char::MAX }
+    }
+}
+
+/// Inclusive byte range
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ByteRange {
+    pub start: u8,
+    pub end: u8
 }
 
 /// Kinds of automata nodes
@@ -43,10 +81,6 @@ impl CharRange {
         CharRange { start, end }
     }
 
-    fn contains(self, ch: char) -> bool {
-        ch >= self.start && ch <= self.end
-    }
-
     /// Concatenate char ranges
     pub(crate) fn concat(self, other: CharRange) -> Option<CharRange> {
         use core::cmp::{max, min};
@@ -65,23 +99,23 @@ impl CharRange {
     }
 }
 
-fn state_range(state: usize) -> RangeInclusive<(usize, CharRange)> {
-    let min = CharRange::MIN;
-    let max = CharRange::MAX;
+fn state_range<R: SymbolRange>(state: usize) -> RangeInclusive<(usize, R)> {
+    let min = R::MIN;
+    let max = R::MAX;
 
     (state, min)..=(state, max)
 }
 
 /// Finite state automata
 #[derive(Debug, Clone)]
-pub struct Automata<T> {
-    pub states: Vec<State<T>>,
-    pub edges: BTreeMap<(usize, CharRange), usize>,
+pub struct Automata<S, R> {
+    pub states: Vec<State<S>>,
+    pub edges: BTreeMap<(usize, R), usize>,
 }
 
-impl<T> Automata<T> {
+impl<S, R: SymbolRange> Automata<S, R> {
     /// Create an automata with given inital state
-    pub(crate) fn new(inital: State<T>) -> Self {
+    pub(crate) fn new(inital: State<S>) -> Self {
         Automata {
             states: vec![inital],
             edges: BTreeMap::new(),
@@ -89,31 +123,31 @@ impl<T> Automata<T> {
     }
 
     /// Get a state by index
-    pub fn get(&self, ix: usize) -> Option<&State<T>> {
+    pub fn get(&self, ix: usize) -> Option<&State<S>> {
         self.states.get(ix)
     }
 
     /// Insert state into the automata
-    pub fn insert_state(&mut self, state: State<T>) {
+    pub fn insert_state(&mut self, state: State<S>) {
         self.states.push(state)
     }
 
     /// Insert transition from state with index `from` to state with index
     /// `to` with the character range `range`
-    pub fn insert_edge(&mut self, from: usize, to: usize, range: CharRange) {
+    pub fn insert_edge(&mut self, from: usize, to: usize, range: R) {
         self.edges.insert((from, range), to);
     }
 
     /// An iterator of all transitions from the given state
     pub fn transitions_from(&self, state: usize) ->
-        impl Iterator<Item=(&CharRange, usize)>
+        impl Iterator<Item=(&R, usize)>
     {
         self.edges.range(state_range(state))
             .map(|(k, &v)| (&k.1, v))
     }
 
     /// Follow a transition from the given state that by the given char
-    pub fn transite(&self, state: usize, ch: char) -> Option<usize> {
+    pub fn transite(&self, state: usize, ch: R::Symbol) -> Option<usize> {
         self.transitions_from(state)
             .find(|t| t.0.contains(ch))
             .map(|(_, state)| state)
@@ -123,7 +157,7 @@ impl<T> Automata<T> {
     pub fn find_terminal_node(&self) -> usize {
         for i in 0..self.states.len() {
             let ends: Vec<_> = self.transitions_from(i)
-                .filter(|(&ch, _)| ch.start == '\0' && ch.end == std::char::MAX)
+                .filter(|(&ch, _)| ch.is_full_range())
                 .map(|(_, end)| end)
                 .collect();
 

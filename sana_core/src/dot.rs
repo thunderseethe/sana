@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 type Edge = (usize, CharRange, usize);
 
-impl<'a, T> GraphWalk<'a, usize, Edge> for Automata<T> {
+impl<'a, S> GraphWalk<'a, usize, Edge> for Automata<S, CharRange> {
     fn nodes(&'a self) -> Nodes<'a, usize> {
         (0..self.states.len()).collect()
     }
@@ -27,7 +27,7 @@ impl<'a, T> GraphWalk<'a, usize, Edge> for Automata<T> {
     }
 }
 
-impl<'a, T> Labeller<'a, usize, Edge> for Automata<T> {
+impl<'a, S> Labeller<'a, usize, Edge> for Automata<S, CharRange> {
     fn graph_id(&'a self) -> Id<'a> {
         Id::new("dfa").unwrap()
     }
