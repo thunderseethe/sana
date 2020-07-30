@@ -52,6 +52,22 @@ pub struct ByteRange {
     pub end: u8
 }
 
+impl SymbolRange for ByteRange {
+    type Symbol = u8;
+
+    const MIN: Self = ByteRange { start: 0, end: 0 };
+    const MAX: Self = ByteRange { start: std::u8::MAX, end: std::u8::MAX };
+
+    fn contains(self, ch: u8) -> bool {
+        ch >= self.start && ch <= self.end
+    }
+    fn start(self) -> u8 { self.start }
+    fn end(self) -> u8 { self.end }
+    fn full_range() -> Self {
+        ByteRange { start: 0, end: std::u8::MAX }
+    }
+}
+
 /// Kinds of automata nodes
 ///
 /// - A sink node is a node with more than one arrow pointing to the node
@@ -197,5 +213,30 @@ impl<S, R: SymbolRange> Automata<S, R> {
             }
         })
         .collect()
+    }
+}
+
+fn utf8_byte_ranges(range: CharRange) -> Vec<ByteRange> {
+    let CharRange { start, end } = range;
+
+    let ranges = vec![];
+    
+    ranges
+}
+
+impl<S> Automata<S, CharRange> {
+    fn into_byte_automata(self) -> Automata<S, ByteRange> {
+        for st in 0..self.states.len() {
+            // let mut utf_ranges = vec![];
+            for (&range, to) in self.transitions_from(st) {
+                // utf_ranges.extend(
+                //     utf8_subranges(range)
+                //         .into_iter()
+                //         .map(|r| (as_byte_ranges(r), to))
+                // )
+            }
+
+        }
+        todo!()
     }
 }
