@@ -189,7 +189,9 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
 ///
 /// # Attributes
 ///
-/// - `#[error]`: Marks the given variant as the error variant. There must be
+/// - `#[backend(be)]`: set the lexer backend. Valid values are `rust` and `vm`.
+/// This attribute must be placed before the enum definiton.
+/// - `#[error]`: mark the given variant as the error variant. There must be
 /// exactly one error variant for a given enum
 /// - `#[regex(re)]`: specify the regular expression corresponding to
 /// the given variant
@@ -217,6 +219,9 @@ fn build_spec(source: ItemEnum) -> SanaSpec {
 /// the [regex](https://docs.rs/regex) crate syntax. `|` denotes the union
 /// of regular expressions, `&` denotes the intersection, and `.` denotes
 /// the concatenation. `!` denotes the complement of a regular expression.
+/// 
+/// The priorities of the operations match the order in the syntax definiton.
+/// So `a | b . c` is the same as `a | (b . c)`.
 #[proc_macro_error]
 #[proc_macro_derive(Sana, attributes(backend, error, regex, token))]
 pub fn sana(input: TokenStream) -> TokenStream {
