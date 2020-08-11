@@ -13,7 +13,7 @@ At compile time, Sana:
 - Generates IR from the automata
 - Compiles IR into Rust code
 
-For an overview of the Sana architecture, see [DESIGN.md](./DESIGN.md).
+For an overview of the Sana architecture, see [DESIGN.md](https://github.com/suhr/sana/blob/master/DESIGN.md).
 
 # Example
 
@@ -82,4 +82,4 @@ fn main() {
 }
 ```
 
-You can find more examples in the [`examples`](./examples) directory.
+You can find more examples in the [`examples`](https://github.com/suhr/sana/tree/master/examples) directory.
