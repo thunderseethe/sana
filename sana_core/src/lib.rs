@@ -15,6 +15,7 @@ use std::collections::{HashMap, VecDeque};
 pub mod regex;
 pub mod automata;
 pub mod ir;
+#[cfg(feature = "automata_dot")]
 pub mod dot;
 
 /// DFA construction error

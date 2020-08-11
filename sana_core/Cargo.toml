@@ -12,11 +12,17 @@ edition = "2018"
 [lib]
 bench = false
 
+[features]
+default = []
+
+# Enable Graphviz DOT module for Automata
+automata_dot = ["dot"]
+
 [dependencies]
 fnv = "1.0.3"
 regex-syntax = "0.6"
 utf8-ranges = "1.0"
-dot = "0.1"
+dot = { version = "0.1", optional = true }
 
 [dev-dependencies]
 criterion = "0.3"
