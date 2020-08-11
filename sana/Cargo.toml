@@ -1,6 +1,6 @@
 [package]
 name = "sana"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
 license = "MIT"
 description = "Create lexers easily"
@@ -18,8 +18,8 @@ name = "bench"
 harness = false
 
 [dependencies]
-sana_core = { path = "../sana_core", version = "0.1.0" }
-sana_derive = { path = "../sana_derive", version = "0.1.0" }
+sana_core = { path = "../sana_core", version = "0.1.1" }
+sana_derive = { path = "../sana_derive", version = "0.1.1" }
 
 [dev-dependencies]
 criterion = "0.3"

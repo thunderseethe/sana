@@ -1,6 +1,6 @@
 [package]
 name = "sana_derive"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Сухарик <65870+suhr@users.noreply.github.com>"]
 license = "MIT"
 description = "The derive macro for Sana"
@@ -15,7 +15,7 @@ name = "sana_derive"
 proc-macro = true
 
 [dependencies]
-sana_core = { path = "../sana_core", version = "0.1.0" }
+sana_core = { path = "../sana_core", version = "0.1.1" }
 
 heck = "0.3"
 syn = { version = "1.0", features = ["full"] }

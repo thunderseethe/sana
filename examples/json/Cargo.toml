@@ -7,4 +7,4 @@ edition = "2018"
 publish = false
 
 [dependencies]
-sana = { path = "../../sana" }
+sana = { path = "../../sana", version = "0.1.1" }
