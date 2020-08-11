@@ -118,6 +118,31 @@ fn and_intersect_rules() {
 }
 
 #[test]
+fn and_not() {
+    #[derive(Clone, Copy, Sana, PartialEq, Debug)]
+    enum Token {
+        #[regex(r"/\*", priority = 616)]
+        CommentStart,
+        #[regex(r"[~!@#\^\&|`?+\-*/%<>=]+" & !r"/\*.*")]
+        Op,
+
+        #[error]
+        Error,
+    }
+
+    let input = "/**/";
+    let mut lexer = Token::lexer(&input);
+
+    let tok = lexer.next().unwrap();
+    assert_eq!(tok, Spanned{ value: Token::CommentStart, start: 0, end: 2 });
+
+    let tok = lexer.next().unwrap();
+    assert_eq!(tok, Spanned{ value: Token::Op, start: 2, end: 4 });
+
+    assert!(lexer.next().is_none());
+}
+
+#[test]
 fn concat() {
     #[derive(Clone, Copy, Sana, PartialEq, Debug)]
     enum Token {
