@@ -14,7 +14,7 @@ name = "sana_derive"
 proc-macro = true
 
 [dependencies]
-sana_core = { path = "../sana_core", version = "0.1" }
+sana_core = { path = "../sana_core", version = "0.1.0" }
 
 heck = "0.3"
 syn = { version = "1.0", features = ["full"] }
