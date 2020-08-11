@@ -1,5 +1,7 @@
 # Sana
 [![Rust](https://github.com/suhr/sana/workflows/Rust/badge.svg)](https://github.com/suhr/sana/actions?query=branch%3Amaster)
+[![crates.io](https://img.shields.io/crates/v/sana.svg)](https://crates.io/crates/sana)
+[![docs.rs](https://docs.rs/sana/badge.svg)](https://docs.rs/sana)
 
 Sana is a lexer generator for Rust. It provides a easy way to create a lexical analyzer for a language.
 

@@ -6,6 +6,7 @@ license = "MIT"
 description = "The core of Sana"
 keywords = ["lexer", "scanner", "tokenizer", "generator"]
 categories = ["parsing", "text-processing"]
+repository = "https://github.com/suhr/sana/"
 readme = "../README.md"
 edition = "2018"
 
